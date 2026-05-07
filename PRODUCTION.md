@@ -1,4 +1,4 @@
-﻿# Production Mobile Testing Runbook
+# Production Mobile Testing Runbook
 
 This is the path to test CoupleOS on real iPhone and Android devices without running a local server.
 
