@@ -51,18 +51,18 @@ The chat guidance for disagreements is inspired by public Gottman Institute mate
 From PowerShell, run:
 
 ```powershell
-cd C:\Users\richt\Documents\Codex\2026-05-06\CouplesOS
+cd path\to\CouplesOS
 node server.mjs 5173
 ```
 
 Then open these URLs:
 
 - On this computer: http://localhost:5173
-- On iPhone or Android on the same Wi-Fi: http://192.168.2.19:5173
+- On iPhone or Android on the same Wi-Fi: http://YOUR-LAN-IP:5173
 
 Keep the PowerShell window open while testing. If the phone cannot connect, allow Node.js through Windows Defender Firewall for private networks, then reload the phone browser.
 
-For real home-screen install and offline service worker behavior on phones, deploy the same folder to an HTTPS host such as Netlify, Vercel, Cloudflare Pages, or a private HTTPS tunnel. Browsers do not allow service workers from a plain `http://192.168...` phone URL.
+For real home-screen install and offline service worker behavior on phones, deploy the same folder to an HTTPS host such as Netlify, Vercel, Cloudflare Pages, or a private HTTPS tunnel. Browsers do not allow service workers from a plain `http://YOUR-LAN-IP:5173` phone URL.
 
 
 ## OpenAI API Chat
@@ -77,13 +77,13 @@ CoupleOS now includes a local server endpoint for live OpenAI chat with app acti
 Set your API key before starting the server:
 
 ```powershell
-cd C:\Users\richt\Documents\Codex\2026-05-06\CouplesOS
+cd path\to\CouplesOS
 $env:OPENAI_API_KEY="sk-your-key-here"
 $env:OPENAI_MODEL="gpt-5"
 node server.mjs 5173
 ```
 
-Then open `http://localhost:5173` on desktop or `http://192.168.2.19:5173` on your phone. OpenAI chat will not run from the `file://` URL because the browser needs the local `/api/chat` endpoint.
+Then open `http://localhost:5173` on desktop or `http://YOUR-LAN-IP:5173` on your phone. OpenAI chat will not run from the `file://` URL because the browser needs the local `/api/chat` endpoint.
 
 Calendar actions are local drafts at this stage. They appear in Settings > Google and can be promoted into real Google Calendar sync once write-scoped OAuth and approval rules are added.
 
@@ -102,5 +102,5 @@ CouplesOS now supports live Google Calendar imports in the browser using Google 
 
 The app imports upcoming events from each primary calendar. Events are treated as shared when they appear on both imports with the same Google iCalUID, or when the event attendee list includes both connected emails.
 
-Important: Google OAuth is usually limited to authorized origins and generally requires HTTPS outside localhost. Testing OAuth from `http://192.168.2.19:5173` on a phone may not work unless Google accepts that origin for your OAuth client. For reliable iPhone/Android OAuth testing, deploy to an HTTPS URL or use an HTTPS tunnel, then add that origin in Google Cloud.
+Important: Google OAuth is usually limited to authorized origins and generally requires HTTPS outside localhost. Testing OAuth from `http://YOUR-LAN-IP:5173` on a phone may not work unless Google accepts that origin for your OAuth client. For reliable iPhone/Android OAuth testing, deploy to an HTTPS URL or use an HTTPS tunnel, then add that origin in Google Cloud.
 
