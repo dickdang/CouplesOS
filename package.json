@@ -1,0 +1,22 @@
+﻿{
+  "name": "couplesos",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs 5173",
+    "check": "node --check app.js && node --check server.mjs && node --check api/chat.mjs && node --check scripts/prepare-web.mjs",
+    "prepare:web": "node scripts/prepare-web.mjs",
+    "cap:init": "npx cap init CouplesOS com.couplesos.app --web-dir www",
+    "cap:ios": "npm run prepare:web && npx cap add ios && npx cap sync ios",
+    "cap:android": "npm run prepare:web && npx cap add android && npx cap sync android",
+    "cap:sync": "npm run prepare:web && npx cap sync"
+  },
+  "dependencies": {
+    "@capacitor/android": "latest",
+    "@capacitor/cli": "latest",
+    "@capacitor/core": "latest",
+    "@capacitor/ios": "latest"
+  },
+  "devDependencies": {}
+}

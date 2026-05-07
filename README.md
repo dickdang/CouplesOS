@@ -2,7 +2,7 @@
 
 A local-first prototype for a ChatGPT-style personal and executive assistant system for a couple.
 
-Open `index.html` in a browser. The app stores profiles, commitments, and preference notes in local browser storage on this machine.
+For production-style phone testing, deploy this repo to an HTTPS host such as Vercel. The app stores profiles, commitments, and preference notes in local browser storage for this prototype.
 
 ## What it includes
 
@@ -68,7 +68,7 @@ For real home-screen install and offline service worker behavior on phones, depl
 
 ## OpenAI API Chat
 
-CoupleOS now includes a local server endpoint for live OpenAI chat with app actions. The browser sends chat context to the local server, and the server uses the OpenAI Responses API with function tools for:
+CoupleOS includes a local Node endpoint for development and a Vercel serverless endpoint for production-style hosted testing. Both support live OpenAI chat with app actions. The browser sends chat context to the local server, and the server uses the OpenAI Responses API with function tools for:
 
 - creating task chats
 - creating project chats with subtasks
@@ -84,7 +84,7 @@ $env:OPENAI_MODEL="gpt-5"
 node server.mjs 5173
 ```
 
-Then open `http://localhost:5173` on desktop or `http://YOUR-LAN-IP:5173` on your phone. OpenAI chat will not run from the `file://` URL because the browser needs the local `/api/chat` endpoint.
+For real iPhone/Android testing without a local server, deploy to Vercel with `OPENAI_API_KEY` set and open the HTTPS deployment URL. OpenAI chat will not run from the `file://` URL because the browser needs `/api/chat`.
 
 Calendar actions are local drafts at this stage. They appear in Settings > Google and can be promoted into real Google Calendar sync once write-scoped OAuth and approval rules are added.
 

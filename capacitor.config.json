@@ -1,0 +1,11 @@
+﻿{
+  "appId": "com.couplesos.app",
+  "appName": "CouplesOS",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "ios": {
+    "contentInset": "automatic"
+  }
+}

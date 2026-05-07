@@ -1200,7 +1200,7 @@ async function requestOpenAIChat(task, text) {
     return {
       configured: false,
       actions: [],
-      message: "OpenAI chat needs the local server URL, not the file URL. Start the CoupleOS server with OPENAI_API_KEY, then open http://localhost:5173 or your phone testing URL."
+      message: "OpenAI chat needs the hosted HTTPS app, not the file URL. Deploy CoupleOS with OPENAI_API_KEY set, then open the deployed URL on your phone."
     };
   }
 
@@ -2782,7 +2782,7 @@ function renderChat() {
     button.dataset.signedIn = state.auth?.[person]?.signedIn ? "true" : "false";
     button.title = `${loginStateLabel(person)} as ${profileName(person)}`;
   });
-  $("#activeAgent").textContent = hasTask ? task.agentName : "Household Executive Agent";
+  $("#activeAgent").textContent = hasTask ? task.agentName : "CoupleOS";
   $("#activeChatTitle").textContent = hasTask ? task.chatTitle : "Start with a task chat";
   $("#inspectorTitle").textContent = hasTask ? task.title : "No task selected";
   $("#chatNameInput").value = hasTask ? task.chatTitle : "";
