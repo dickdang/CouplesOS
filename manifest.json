@@ -1,0 +1,36 @@
+{
+  "id": "coupleos",
+  "name": "CoupleOS",
+  "short_name": "CoupleOS",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay", "browser"],
+  "background_color": "#ffffff",
+  "theme_color": "#171717",
+  "orientation": "portrait-primary",
+  "description": "A ChatGPT-style household and executive assistant for couples.",
+  "categories": ["productivity", "lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Task Chat",
+      "short_name": "Task",
+      "url": "./index.html#tasks",
+      "description": "Create an accountable task chat."
+    },
+    {
+      "name": "Google Calendar",
+      "short_name": "Google",
+      "url": "./index.html#integrations",
+      "description": "Review calendar handoffs and draft events."
+    }
+  ]
+}
