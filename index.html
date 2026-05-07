@@ -15,6 +15,30 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <section class="login-screen" id="loginScreen" aria-label="CoupleOS sign in">
+      <div class="login-card">
+        <div class="login-brand">
+          <div class="mark" aria-hidden="true">C</div>
+          <div>
+            <p class="eyebrow">Private pilot</p>
+            <h1>CoupleOS</h1>
+          </div>
+        </div>
+        <div class="login-copy">
+          <h2>Sign in to CoupleOS</h2>
+          <p>Use Google Workspace to create the shared household assistant for Rich and Jess.</p>
+        </div>
+        <form id="loginForm" class="login-form">
+          <label>
+            Google OAuth Client ID
+            <input id="loginGoogleClientId" autocomplete="off" placeholder="1234567890-abc.apps.googleusercontent.com" />
+          </label>
+          <button class="primary-button" id="googleSignupButton" type="submit">Continue with Google Workspace</button>
+        </form>
+        <button class="secondary-button login-secondary" id="localPrototypeLogin" type="button">Continue in local prototype</button>
+        <p class="small-note" id="loginStatus">Google sign-up requires the OAuth Client ID from Google Cloud.</p>
+      </div>
+    </section>
     <header class="mobile-topbar" aria-label="Mobile navigation">
       <button class="mobile-menu-button" id="mobileMenuButton" type="button" aria-label="Open menu" aria-controls="primarySidebar" aria-expanded="false">
         <span></span>
@@ -59,6 +83,7 @@
 
         <div class="sidebar-note">
           <p>An EA-replacement system, piloted first for husband-and-wife coordination. Every task owns a chat, and every chat has a focused agent.</p>
+          <button class="mini-button sidebar-signout" id="signOutButton" type="button">Sign out</button>
         </div>
       </aside>
 
@@ -335,9 +360,9 @@
               Initial chat name
               <input id="taskChatName" placeholder="Defaults to the task title" />
             </label>
-            <label>
-              Initial agent
-              <input id="taskAgentName" placeholder="Example: Health Admin Agent" />
+            <label class="wide">
+              Notes
+              <textarea id="taskNotes" rows="3" placeholder="Example: Grocery list: broccoli, lettuce, eggs"></textarea>
             </label>
             <label>
               Owner
@@ -411,6 +436,17 @@
             <label>
               Target date
               <input id="planDate" type="date" />
+            </label>
+            <label>
+              Repeats
+              <select id="planRecurrence">
+                <option value="none">One-time</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="biweekly">Every 2 weeks</option>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+              </select>
             </label>
             <label>
               Default owner

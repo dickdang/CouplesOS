@@ -1,6 +1,7 @@
 const STORAGE_KEY = "householdAssistant.v1";
 const GOOGLE_DISCOVERY_DOC = "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest";
 const GOOGLE_SCOPES = "https://www.googleapis.com/auth/calendar.readonly openid email profile";
+const GOOGLE_LOGIN_SCOPES = "openid email profile";
 const googleRuntime = { gapiReady: false, gisReady: false, clientReady: false, tokenClient: null };
 
 const defaultState = {
@@ -10,6 +11,9 @@ const defaultState = {
   activeChatId: null,
   activeProjectName: null,
   auth: {
+    appSignedIn: false,
+    googleUser: null,
+    localPrototype: false,
     partnerA: { signedIn: true },
     partnerB: { signedIn: false }
   },
@@ -113,6 +117,131 @@ function initializeGoogleTokenClient() {
     callback: ""
   });
   return true;
+}
+
+function isAuthenticated() {
+  return Boolean(state.auth?.appSignedIn || state.auth?.googleUser || state.auth?.localPrototype);
+}
+
+function setLoginStatus(message) {
+  const target = $("#loginStatus");
+  if (target) target.textContent = message;
+}
+
+function renderAuthGate() {
+  const signedIn = isAuthenticated();
+  document.body.classList.toggle("auth-locked", !signedIn);
+  const loginScreen = $("#loginScreen");
+  if (loginScreen) loginScreen.hidden = signedIn;
+  const clientInput = $("#loginGoogleClientId");
+  if (clientInput && document.activeElement !== clientInput) clientInput.value = state.google?.oauth?.clientId || "";
+  const signOut = $("#signOutButton");
+  if (signOut) {
+    const label = state.auth?.googleUser?.email ? `Sign out ${state.auth.googleUser.email}` : "Sign out";
+    signOut.textContent = label;
+  }
+}
+
+function requestGoogleLoginToken() {
+  return new Promise((resolve, reject) => {
+    if (!window.google || !state.google.oauth.clientId) {
+      reject(new Error("Google sign-in is not ready yet."));
+      return;
+    }
+    const loginClient = google.accounts.oauth2.initTokenClient({
+      client_id: state.google.oauth.clientId,
+      scope: GOOGLE_LOGIN_SCOPES,
+      callback: (response) => {
+        if (response.error) {
+          reject(response);
+          return;
+        }
+        resolve(response.access_token);
+      }
+    });
+    loginClient.requestAccessToken({ prompt: "consent" });
+  });
+}
+
+async function signInWithGoogle() {
+  const clientInput = $("#loginGoogleClientId");
+  const clientId = (clientInput?.value || state.google?.oauth?.clientId || "").trim();
+  if (!clientId) {
+    setLoginStatus("Paste your Google OAuth Client ID first. You can create it in Google Cloud for this local app URL.");
+    return;
+  }
+  state.google.oauth.clientId = clientId;
+  saveState();
+
+  if (!window.google) {
+    setLoginStatus("Google sign-in is still loading. Try again in a moment.");
+    return;
+  }
+
+  setLoginStatus("Opening Google sign-in...");
+  try {
+    const accessToken = await requestGoogleLoginToken();
+    const profile = await fetchGoogleProfile(accessToken);
+    const now = new Date().toISOString();
+    state.auth = {
+      ...state.auth,
+      appSignedIn: true,
+      localPrototype: false,
+      googleUser: {
+        email: profile?.email || "Google Workspace user",
+        name: profile?.name || profileName("partnerA"),
+        signedInAt: now
+      },
+      partnerA: { signedIn: true, signedInAt: now },
+      partnerB: state.auth?.partnerB || { signedIn: false }
+    };
+    state.google.oauth.accounts.partnerA = {
+      ...(state.google.oauth.accounts.partnerA || {}),
+      email: profile?.email || state.google.oauth.accounts.partnerA?.email || "",
+      name: profile?.name || profileName("partnerA")
+    };
+    state.activeUser = "partnerA";
+    initializeGoogleTokenClient();
+    saveState();
+    renderAll();
+    showView("chat");
+    toast("Signed in with Google Workspace.");
+  } catch (error) {
+    console.warn("Google sign-in failed", error);
+    setLoginStatus("Google sign-in did not complete. Check the OAuth Client ID and authorized origin, then try again.");
+  }
+}
+
+function signInLocalPrototype() {
+  const now = new Date().toISOString();
+  state.auth = {
+    ...state.auth,
+    appSignedIn: true,
+    localPrototype: true,
+    googleUser: null,
+    partnerA: { signedIn: true, signedInAt: now },
+    partnerB: state.auth?.partnerB || { signedIn: false }
+  };
+  state.activeUser = "partnerA";
+  saveState();
+  renderAll();
+  showView("chat");
+  toast("Local prototype mode enabled.");
+}
+
+function signOut() {
+  state.auth = {
+    ...state.auth,
+    appSignedIn: false,
+    localPrototype: false,
+    googleUser: null,
+    partnerA: { signedIn: false },
+    partnerB: { signedIn: false }
+  };
+  state.activeUser = "partnerA";
+  saveState();
+  renderAll();
+  setLoginStatus("Signed out. Sign in with Google Workspace to continue.");
 }
 
 async function prepareGoogleCalendarApi() {
@@ -441,6 +570,8 @@ function normalizeTask(task) {
     category: task.category || "Admin",
     success: task.success || "",
     why: task.why || "",
+    notes: task.notes || "",
+    recurrence: task.recurrence || "none",
     status: task.status || "open",
     createdAt: task.createdAt || new Date().toISOString(),
     updates: task.updates || [],
@@ -568,6 +699,7 @@ function id() {
 }
 
 function init() {
+  bindAuth();
   bindNavigation();
   bindMobileShell();
   bindChat();
@@ -588,6 +720,20 @@ function init() {
   routeFromHash();
 }
 
+
+function bindAuth() {
+  const loginForm = $("#loginForm");
+  if (loginForm) {
+    loginForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      signInWithGoogle();
+    });
+  }
+  const localButton = $("#localPrototypeLogin");
+  if (localButton) localButton.addEventListener("click", signInLocalPrototype);
+  const signOutButton = $("#signOutButton");
+  if (signOutButton) signOutButton.addEventListener("click", signOut);
+}
 
 function ensureExecutiveAssistantChat() {
   let chat = state.tasks.find((task) => task.homeAgent)
@@ -1140,6 +1286,8 @@ function summarizeTaskForAI(task) {
     project: task.project,
     status: task.status,
     success: task.success,
+    notes: task.notes,
+    recurrence: task.recurrence,
     participants: chatParticipants(task).map(profileName)
   };
 }
@@ -1181,6 +1329,7 @@ function applyCreateTaskAction(payload) {
     accountabilityGraceDays: 0,
     success: payload.success || title,
     why: "Created by the OpenAI agent.",
+    notes: payload.notes || "",
     project: payload.project || "",
     status: "open",
     createdAt: new Date().toISOString(),
@@ -1198,6 +1347,7 @@ function applyCreateProjectAction(payload) {
   const category = normalizeActionCategory(payload.category);
   const projectName = payload.name || "New Project";
   const due = payload.due || "";
+  const recurrence = normalizeRecurrence(payload.recurrence);
   const projectChat = normalizeTask({
     id: id(),
     title: projectName + ": project plan",
@@ -1210,13 +1360,15 @@ function applyCreateProjectAction(payload) {
     accountabilityGraceDays: 1,
     success: payload.summary || "Project plan is clear and ready to act on.",
     why: "Created by the OpenAI agent.",
+    notes: payload.summary || "",
+    recurrence,
     project: projectName,
     status: "open",
     createdAt: new Date().toISOString(),
     updates: [],
     messages: [
       { role: "assistant", text: payload.summary || "This project was created by the OpenAI agent from chat." },
-      { role: "assistant", text: projectRecommendationText(projectName, payload.summary || "") }
+      { role: "assistant", text: projectRecommendationText(projectName, payload.summary || "", recurrence) }
     ]
   });
   const subtasks = Array.isArray(payload.subtasks) ? payload.subtasks.map((item) => {
@@ -1234,6 +1386,8 @@ function applyCreateProjectAction(payload) {
       accountabilityGraceDays: 0,
       success: item.success || title,
       why: "Subtask created by the OpenAI agent.",
+      notes: item.notes || "",
+      recurrence,
       project: projectName,
       status: "open",
       createdAt: new Date().toISOString(),
@@ -1623,7 +1777,8 @@ function bindTasks() {
       id: id(),
       title,
       chatTitle: $("#taskChatName").value.trim() || title,
-      agentName: $("#taskAgentName").value.trim() || defaultAgentName(category),
+      agentName: defaultAgentName(category),
+      notes: $("#taskNotes").value.trim(),
       owner: $("#taskOwner").value,
       due: $("#taskDue").value,
       category,
@@ -2001,12 +2156,13 @@ function bindPlanning() {
     const planName = $("#planName").value.trim();
     const targetDate = $("#planDate").value;
     const owner = $("#planOwner").value;
+    const recurrence = $("#planRecurrence").value;
     const notes = $("#planPriorities").value.trim();
-    const tasks = createRecommendedProject(planName, targetDate, owner, notes);
+    const tasks = createRecommendedProject(planName, targetDate, owner, notes, recurrence);
     state.tasks = [...tasks, ...state.tasks];
     state.activeProjectName = planName;
     state.activeChatId = tasks[0]?.id || state.activeChatId;
-    addLearning(owner, planName + " is an active project. Notes: " + (notes || "not yet specified") + ".", "Project setup");
+    addLearning(owner, planName + " is an active project. Repeats: " + recurrenceLabel(recurrence) + ". Notes: " + (notes || "not yet specified") + ".", "Project setup");
     event.target.reset();
     saveState();
     renderAll();
@@ -2014,7 +2170,7 @@ function bindPlanning() {
     toast("Project created.");
   });
 }
-function createRecommendedProject(projectName, targetDate, owner, notes) {
+function createRecommendedProject(projectName, targetDate, owner, notes, recurrence = "none") {
   const category = inferProjectCategory(projectName + " " + notes);
   const due = targetDate || addDays(todayISO(), 14);
   const projectChat = normalizeTask({
@@ -2029,16 +2185,18 @@ function createRecommendedProject(projectName, targetDate, owner, notes) {
     accountabilityGraceDays: 1,
     success: notes || projectName,
     why: "Project created from the Projects section.",
+    notes,
+    recurrence,
     project: projectName,
     status: "open",
     createdAt: new Date().toISOString(),
     updates: [],
     messages: [
       { role: "assistant", text: "I created this project chat. I will keep recommendations here and turn approved ideas into subtasks." },
-      { role: "assistant", text: projectRecommendationText(projectName, notes) }
+      { role: "assistant", text: projectRecommendationText(projectName, notes, recurrence) }
     ]
   });
-  const subtasks = recommendedProjectSubtasks(projectName, due, owner, category, notes);
+  const subtasks = recommendedProjectSubtasks(projectName, due, owner, category, notes, recurrence);
   return [projectChat, ...subtasks];
 }
 
@@ -2053,12 +2211,30 @@ function inferProjectCategory(text) {
   return "Admin";
 }
 
-function projectRecommendationText(projectName, notes) {
-  const context = notes ? " Based on your notes: " + notes + "." : "";
-  return "AI recommendations for " + projectName + ": start with the smallest useful outcome, assign one owner per subtask, add calendar time only where it prevents a miss, and keep decisions in this project chat." + context;
+function normalizeRecurrence(value) {
+  const allowed = ["none", "daily", "weekly", "biweekly", "monthly", "quarterly"];
+  return allowed.includes(value) ? value : "none";
 }
 
-function recommendedProjectSubtasks(projectName, due, owner, category, notes) {
+function recurrenceLabel(value) {
+  const labels = {
+    none: "One-time",
+    daily: "Daily",
+    weekly: "Weekly",
+    biweekly: "Every 2 weeks",
+    monthly: "Monthly",
+    quarterly: "Quarterly"
+  };
+  return labels[value] || labels.none;
+}
+
+function projectRecommendationText(projectName, notes, recurrence = "none") {
+  const context = notes ? " Based on your notes: " + notes + "." : "";
+  const rhythm = recurrence !== "none" ? " This is a " + recurrenceLabel(recurrence).toLowerCase() + " project, so I will expect this chat to stay useful on that rhythm." : " This looks like a one-time project.";
+  return "AI recommendations for " + projectName + ": start with the smallest useful outcome, assign one owner per subtask, add calendar time only where it prevents a miss, and keep decisions in this project chat." + rhythm + context;
+}
+
+function recommendedProjectSubtasks(projectName, due, owner, category, notes, recurrence = "none") {
   const lower = (projectName + " " + notes).toLowerCase();
   let titles = ["Decide the next outcome", "List the first actions", "Schedule the work block"];
   if (lower.includes("meal") || lower.includes("costco") || lower.includes("grocery")) {
@@ -2080,6 +2256,8 @@ function recommendedProjectSubtasks(projectName, due, owner, category, notes) {
     accountabilityGraceDays: 0,
     success: title,
     why: "AI-recommended subtask for " + projectName + ".",
+    notes: notes || "",
+    recurrence,
     project: projectName,
     status: "open",
     createdAt: new Date().toISOString(),
@@ -2236,6 +2414,7 @@ function bindDemo() {
 }
 
 function renderAll() {
+  renderAuthGate();
   renderPersonLabels();
   renderProfileForm();
   renderDashboardCalendar();
@@ -2450,7 +2629,7 @@ function renderProjects() {
     const activeClass = group.name === state.activeProjectName ? "active" : "";
     return [
       `<button class="project-card project-select-card ${activeClass}" data-project-name="${escapeHtml(group.name)}" type="button">`,
-      `<span><strong>${escapeHtml(group.name)}</strong><small>${escapeHtml(group.tasks.length)} chats - ${escapeHtml(openCount)} open</small></span>`,
+      `<span><strong>${escapeHtml(group.name)}</strong><small>${escapeHtml(group.tasks.length)} chats - ${escapeHtml(openCount)} open${projectLead.recurrence && projectLead.recurrence !== "none" ? " - " + escapeHtml(recurrenceLabel(projectLead.recurrence)) : ""}</small></span>`,
       `<span class="badge blue">${escapeHtml(profileName(projectLead.owner))}</span>`,
       `</button>`
     ].join("");
@@ -2676,6 +2855,8 @@ function renderInspector(task) {
       <div class="context-row"><span>Due</span><strong>${escapeHtml(formatDate(task.due))}</strong></div>
       <div class="context-row"><span>Type</span><strong>${escapeHtml(task.category)}</strong></div>
       ${task.project ? `<div class="context-row"><span>Plan</span><strong>${escapeHtml(task.project)}</strong></div>` : ""}
+      ${task.recurrence && task.recurrence !== "none" ? `<div class="context-row"><span>Repeats</span><strong>${escapeHtml(recurrenceLabel(task.recurrence))}</strong></div>` : ""}
+      ${task.notes ? `<div><h4>Notes</h4><p>${escapeHtml(task.notes)}</p></div>` : ""}
       <div>
         <h4>Agent stance</h4>
         <p>${escapeHtml(coaching)}</p>
@@ -2722,7 +2903,7 @@ function renderTask(task) {
       <div class="task-top">
         <div>
           <h3 class="task-title">${escapeHtml(task.title)}</h3>
-          <div class="meta">${escapeHtml(task.chatTitle)} - ${escapeHtml(task.agentName)}</div>
+          <div class="meta">${escapeHtml(task.chatTitle)}</div>
         </div>
         <span class="badge ${overdue || task.status === "stuck" ? "clay" : task.status === "done" ? "" : "blue"}">${escapeHtml(overdue ? "overdue" : task.status)}</span>
       </div>
@@ -2732,8 +2913,9 @@ function renderTask(task) {
         <span class="badge blue">${escapeHtml(formatDate(task.due))}</span>
         <span class="badge">${escapeHtml(task.category)}</span>
         ${task.project ? `<span class="badge">${escapeHtml(task.project)}</span>` : ""}
+        ${task.recurrence && task.recurrence !== "none" ? `<span class="badge">${escapeHtml(recurrenceLabel(task.recurrence))}</span>` : ""}
       </div>
-      <p>${escapeHtml(task.project ? task.project : task.category + " task")}</p>
+      <p>${escapeHtml(task.notes || (task.project ? task.project : task.category + " task"))}</p>
       <div class="card-actions">
         <button class="card-action" data-task-action="select" data-task-id="${escapeHtml(task.id)}" type="button">Open chat</button>
         ${task.status !== "done" ? `<button class="card-action" data-task-action="done" data-task-id="${escapeHtml(task.id)}" type="button">Done</button>` : ""}

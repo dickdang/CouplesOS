@@ -29,7 +29,8 @@ const appTools = [
         due: { type: "string", description: "YYYY-MM-DD when known, otherwise empty string" },
         category: { type: "string", enum: ["Home", "Family", "Money", "Health", "Relationship", "Admin", "Business", "Wedding"] },
         project: { type: "string" },
-        success: { type: "string" }
+        success: { type: "string" },
+        notes: { type: "string", description: "Useful task details such as a grocery list, pickup instructions, links, or prep notes." }
       },
       required: ["title", "owner", "category"]
     }
@@ -47,6 +48,7 @@ const appTools = [
         owner: { type: "string", enum: ["partnerA", "partnerB", "both"] },
         due: { type: "string", description: "YYYY-MM-DD when known, otherwise empty string" },
         category: { type: "string", enum: ["Home", "Family", "Money", "Health", "Relationship", "Admin", "Business", "Wedding"] },
+        recurrence: { type: "string", enum: ["none", "daily", "weekly", "biweekly", "monthly", "quarterly"], description: "How often the project chat will be reused. Use none for one-time projects like a wedding." },
         subtasks: {
           type: "array",
           items: {
@@ -57,7 +59,8 @@ const appTools = [
               owner: { type: "string", enum: ["partnerA", "partnerB", "both"] },
               due: { type: "string" },
               category: { type: "string", enum: ["Home", "Family", "Money", "Health", "Relationship", "Admin", "Business", "Wedding"] },
-              success: { type: "string" }
+              success: { type: "string" },
+              notes: { type: "string" }
             },
             required: ["title", "owner"]
           }
@@ -190,6 +193,8 @@ async function handleChat(request, response) {
     "You are CoupleOS, a calm ChatGPT-style executive assistant for a couple.",
     "Keep the mood light, practical, and collaborative.",
     "When the user asks you to make or change tasks, projects, or calendar events, call the matching function tool.",
+    "Put grocery lists, pickup details, links, prep details, or other supporting context into task notes.",
+    "For projects, set recurrence to none for one-time projects and weekly/monthly/etc. when the chat will be reused on that rhythm.",
     "Calendar tools create or update local drafts for approval; do not claim a Google event was synced unless the app context says it was.",
     "For disagreements, recommend a fair next step that protects both partners' interests without therapy jargon.",
     "Prefer short, useful replies. Mention created actions naturally."

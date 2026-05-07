@@ -10,10 +10,11 @@ Open `index.html` in a browser. The app stores profiles, commitments, and prefer
 - A simplified Codex-style left rail: New Chat, Search, Tasks, and Settings.
 - One chat per task, with a renameable chat name and dedicated supporting agent.
 - Shared task chats for two separate partner sign-ins, with message attribution like a lightweight group chat.
+- Task notes for supporting details such as grocery lists, pickup instructions, prep details, and links.
 - Settings groups onboarding, learned preferences, plugins such as Google, mobile install status, and planning tools.
 - A right-side task context panel for status, owner, due date, definition of done, and agent stance.
 - Overdue reminder drafts for email, text, or AI phone call scripts that ask whether the owner needs help or is just behind.
-- A planning page that turns large projects, including a wedding, into multiple task chats with owners, dates, and agents.
+- A planning page that turns large projects, including a wedding or weekly meal prep, into multiple task chats with owners, dates, agents, and one-time or recurring rhythms.
 - Google Calendar prototype workflows for reviewing availability, comparing proximity, recommending who should handle a pickup/errand/meeting, and drafting calendar events.
 - Mobile web app metadata and responsive phone-first layouts for using CoupleOS from a home-screen web app.
 - Cross-platform PWA support for iOS and Android with a web app manifest, icon, safe-area styling, install status screen, and offline app shell.
@@ -28,7 +29,7 @@ Reminder outreach is drafted and logged locally in this prototype. It does not a
 
 Google Suite integration is also prototype-local for now. A production version would connect Google OAuth, Google Calendar, Gmail, Contacts, and Maps/Routes APIs before syncing real events or using real location data.
 
-Partner sign-in is prototype-local too. A production version would replace the local switcher with real authentication, private user accounts, shared household permissions, and audit history for who sent each message.
+CoupleOS now starts behind a Google Workspace sign-in page. For local prototyping, paste the OAuth Client ID on the login screen or use local prototype mode. A production version should move the OAuth Client ID into server configuration, add private user accounts, shared household permissions, and audit history for who sent each message.
 
 ## Mobile
 
@@ -97,7 +98,7 @@ CouplesOS now supports live Google Calendar imports in the browser using Google 
 3. Create an OAuth 2.0 Client ID for a Web application.
 4. Create an API key restricted to the Google Calendar API.
 5. Add authorized JavaScript origins for where you run the app. For local desktop testing, add `http://localhost:5173`.
-6. Open CoupleOS, go to Settings > Google, paste the OAuth Client ID and API key, and save.
+6. Open CoupleOS, paste the OAuth Client ID on the sign-in screen, and continue with Google Workspace. After entering the app, go to Settings > Google, paste the API key if needed, and save.
 7. Connect/import Partner A, then connect/import Partner B. Each person must choose and approve their own Google account.
 
 The app imports upcoming events from each primary calendar. Events are treated as shared when they appear on both imports with the same Google iCalUID, or when the event attendee list includes both connected emails.

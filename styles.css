@@ -48,6 +48,87 @@ button {
 .mobile-backdrop {
   display: none;
 }
+
+.login-screen {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--surface);
+}
+
+.login-card {
+  width: min(100%, 420px);
+  display: grid;
+  gap: 20px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.08);
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.login-brand h1,
+.login-copy h2 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.login-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.login-copy h2 {
+  font-size: 1.55rem;
+}
+
+.login-copy p,
+.login-form label {
+  margin: 0;
+  color: #3f3f46;
+  line-height: 1.5;
+}
+
+.login-form {
+  display: grid;
+  gap: 12px;
+}
+
+.login-form label {
+  display: grid;
+  gap: 8px;
+  font-weight: 650;
+}
+
+.login-form input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.login-secondary {
+  width: 100%;
+}
+
+body.auth-locked .mobile-topbar,
+body.auth-locked .mobile-backdrop,
+body.auth-locked .app-shell {
+  display: none;
+}
+
+body:not(.auth-locked) .login-screen {
+  display: none;
+}
 .app-shell {
   display: grid;
   grid-template-columns: 292px minmax(0, 1fr);
@@ -203,11 +284,27 @@ button {
 }
 
 .sidebar-note {
+  display: grid;
+  gap: 10px;
   padding: 10px;
   border-top: 1px solid var(--dark-line);
   color: #bdbdbd;
   font-size: 0.86rem;
   line-height: 1.45;
+}
+
+.sidebar-signout {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  text-align: left;
+  color: #dcdcdc;
+  background: transparent;
+  border: 1px solid var(--dark-line);
+}
+
+.sidebar-signout:hover {
+  background: var(--sidebar-hover);
 }
 
 .content {
