@@ -38,7 +38,7 @@ const defaultState = {
   },
   sharedCalendar: {
     imported: false,
-    activeView: "shared",
+    activeView: "mine",
     events: []
   },
   lastOutcome: null
@@ -230,10 +230,13 @@ async function signInWithGoogle() {
       name: profile?.name || profileName("partnerA")
     };
     state.activeUser = "partnerA";
+    state.sharedCalendar.activeView = "mine";
     saveState();
+    setLoginStatus("Syncing My Calendar...");
+    await refreshSignedInCalendar({ silent: true });
     renderAll();
     showView("dashboard");
-    toast("Signed in with Google Workspace.");
+    toast(hasConnectedCalendar() ? "Signed in and calendar synced." : "Signed in with Google Workspace.");
   } catch (error) {
     console.warn("Google sign-in failed", error);
     setLoginStatus("Google sign-in did not complete. Confirm your Vercel URL is an authorized JavaScript origin in Google Cloud, then try again.");
@@ -314,28 +317,31 @@ function signOut() {
   setLoginStatus("Signed out. Sign in with Google Workspace to continue.");
 }
 
-async function prepareGoogleCalendarApi() {
+async function prepareGoogleCalendarApi(options = {}) {
+  const silent = Boolean(options.silent);
   if (!state.google.oauth.clientId || !state.google.oauth.apiKey) {
-    toast("Google Calendar is not configured yet. Add GOOGLE_CLIENT_ID and GOOGLE_API_KEY in Vercel, then redeploy.");
-    showView("integrations");
+    if (!silent) {
+      toast("Google Calendar is not configured yet. Add GOOGLE_CLIENT_ID and GOOGLE_API_KEY in Vercel, then redeploy.");
+      showView("integrations");
+    }
     return false;
   }
   if (!window.google || !window.gapi) {
-    toast("Google libraries are still loading. Try again in a moment.");
+    if (!silent) toast("Google libraries are still loading. Try again in a moment.");
     return false;
   }
   if (!googleRuntime.clientReady) await initializeGoogleClient();
   if (!googleRuntime.clientReady) {
-    toast("Google Calendar API did not initialize. Check the API key restrictions and enabled APIs.");
+    if (!silent) toast("Google Calendar API did not initialize. Check the API key restrictions and enabled APIs.");
     return false;
   }
   return true;
 }
 
-function requestGoogleAccessToken(person) {
+function requestGoogleAccessToken(person, options = {}) {
   return requestGoogleToken(GOOGLE_SCOPES, {
-    prompt: "consent",
-    hint: state.google.oauth.accounts[person]?.email || ""
+    prompt: options.prompt ?? "consent",
+    hint: state.google.oauth.accounts[person]?.email || state.auth?.googleUser?.email || ""
   });
 }
 
@@ -351,25 +357,53 @@ async function fetchGoogleProfile(accessToken) {
   }
 }
 
+async function syncGoogleCalendarForPerson(person, options = {}) {
+  if (!await prepareGoogleCalendarApi({ silent: options.silent })) return null;
+  const accessToken = await requestGoogleAccessToken(person, { prompt: options.prompt ?? "consent" });
+  const profile = await fetchGoogleProfile(accessToken);
+  const imported = await importGoogleCalendarForPerson(person, accessToken, profile);
+  state.google.oauth.accounts[person] = {
+    ...(state.google.oauth.accounts[person] || {}),
+    email: profile?.email || state.google.oauth.accounts[person]?.email || state.auth?.googleUser?.email || profileName(person),
+    name: profile?.name || state.google.oauth.accounts[person]?.name || profileName(person),
+    importedAt: new Date().toISOString(),
+    count: imported.length
+  };
+  state.google.connected = true;
+  mergeImportedGoogleEvents();
+  return { imported, profile };
+}
+
+async function refreshSignedInCalendar(options = {}) {
+  const person = signedInCalendarPerson();
+  const account = state.google.oauth.accounts[person];
+  const prompt = account?.importedAt ? "" : "consent";
+  try {
+    const result = await syncGoogleCalendarForPerson(person, {
+      prompt,
+      silent: options.silent ?? Boolean(account?.importedAt)
+    });
+    if (!result) return false;
+    saveState();
+    renderAll();
+    if (options.toast) toast(`Calendar refreshed. ${result.imported.length} events synced.`);
+    return true;
+  } catch (error) {
+    console.warn("Automatic Google Calendar refresh failed", error);
+    if (!options.silent) toast(error?.message || "Calendar refresh did not complete.");
+    return false;
+  }
+}
+
 async function connectGoogleCalendar(person) {
-  if (!await prepareGoogleCalendarApi()) return;
   try {
     toast(`Opening ${profileName(person)} Google Calendar permission...`);
-    const accessToken = await requestGoogleAccessToken(person);
-    const profile = await fetchGoogleProfile(accessToken);
-    const imported = await importGoogleCalendarForPerson(person, accessToken, profile);
-    state.google.oauth.accounts[person] = {
-      email: profile?.email || state.google.oauth.accounts[person]?.email || profileName(person),
-      name: profile?.name || profileName(person),
-      importedAt: new Date().toISOString(),
-      count: imported.length
-    };
-    state.google.connected = true;
-    mergeImportedGoogleEvents();
+    const result = await syncGoogleCalendarForPerson(person, { prompt: "consent" });
+    if (!result) return;
     const agent = ensureCalendarAgentChat();
     agent.messages.push({
       role: "assistant",
-      text: `${profileName(person)} connected Google Calendar and imported ${imported.length} upcoming events.`
+      text: `${profileName(person)} connected Google Calendar and imported ${result.imported.length} upcoming events.`
     });
     state.activeChatId = agent.id;
     saveState();
@@ -381,7 +415,6 @@ async function connectGoogleCalendar(person) {
     toast(error?.message || "Google Calendar import did not complete.");
   }
 }
-
 async function importGoogleCalendarForPerson(person, accessToken, profile) {
   gapi.client.setToken({ access_token: accessToken });
   const response = await gapi.client.calendar.events.list({
@@ -567,7 +600,8 @@ function loadState() {
         }
       : structuredClone(defaultState);
 
-    if (!["mine", "jess", "shared"].includes(merged.sharedCalendar.activeView)) merged.sharedCalendar.activeView = "shared";
+    if (!["mine", "jess", "shared"].includes(merged.sharedCalendar.activeView)) merged.sharedCalendar.activeView = "mine";
+    if (!saved?.sharedCalendar?.dashboardViewChosen && merged.sharedCalendar.activeView === "shared") merged.sharedCalendar.activeView = "mine";
     merged.sharedCalendar.events = (merged.sharedCalendar.events || []).map(normalizeSharedEvent);
     merged.tasks = (merged.tasks || []).map(normalizeTask);
     if (!["partnerA", "partnerB"].includes(merged.activeUser)) merged.activeUser = "partnerA";
@@ -861,6 +895,7 @@ function bindDashboardCalendar() {
   if (viewSelect) {
     viewSelect.addEventListener("change", () => {
       state.sharedCalendar.activeView = viewSelect.value;
+      state.sharedCalendar.dashboardViewChosen = true;
       saveState();
       renderDashboardCalendar();
     });
@@ -2581,6 +2616,24 @@ function calendarViewPerson(view) {
   return "both";
 }
 
+function formatCalendarSyncStamp(value) {
+  if (!value) return "Not synced yet";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Not synced yet";
+  return `Last synced ${date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
+}
+
+function calendarSyncStampForView(view) {
+  const accounts = state.google.oauth.accounts || {};
+  if (view === "mine") return formatCalendarSyncStamp(accounts.partnerA?.importedAt);
+  if (view === "jess") return formatCalendarSyncStamp(accounts.partnerB?.importedAt);
+  const latest = [accounts.partnerA?.importedAt, accounts.partnerB?.importedAt]
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+  return formatCalendarSyncStamp(latest);
+}
+
 function importedCalendarEventsFor(person) {
   return state.google.events
     .filter((event) => event.source === "google-import" && event.importedFor === person)
@@ -2611,30 +2664,28 @@ function renderPersonalCalendarEvent(calendarEvent) {
 function renderDashboardCalendar() {
   const list = $("#sharedEventList");
   if (!list) return;
-  const quickOnboarding = $("#quickOnboarding");
-  if (quickOnboarding) quickOnboarding.hidden = hasConnectedCalendar();
-  const imported = Boolean(state.sharedCalendar.imported);
-  const view = state.sharedCalendar.activeView || "shared";
+  const view = state.sharedCalendar.activeView || "mine";
   const person = calendarViewPerson(view);
   const isShared = view === "shared";
-
 
   const select = $("#calendarViewSelect");
   if (select) select.value = view;
   const listEyebrow = $("#calendarListEyebrow");
   if (listEyebrow) listEyebrow.textContent = calendarViewLabel(view);
+  const syncStamp = $("#calendarSyncStamp");
+  if (syncStamp) syncStamp.textContent = calendarSyncStampForView(view);
 
   if (isShared) {
     list.innerHTML = state.sharedCalendar.events.length
       ? state.sharedCalendar.events.map(renderSharedCalendarEvent).join("")
-      : `<div class="empty-state"><strong>No shared events yet.</strong><p>Import both calendars to find events that involve both of you.</p></div>`;
+      : `<div class="empty-state"><strong>No shared events yet.</strong><p>When both calendars sync, shared events will appear here.</p></div>`;
     return;
   }
 
   const personalEvents = importedCalendarEventsFor(person);
   list.innerHTML = personalEvents.length
     ? personalEvents.map(renderPersonalCalendarEvent).join("")
-    : `<div class="empty-state"><strong>No ${escapeHtml(calendarViewLabel(view).toLowerCase())} events yet.</strong><p>Connect and import this Google Calendar in Settings > Google.</p></div>`;
+    : `<div class="empty-state"><strong>No ${escapeHtml(calendarViewLabel(view).toLowerCase())} events yet.</strong><p>Sync this calendar in Settings > Calendar Sync.</p></div>`;
 }
 
 function renderSharedCalendarEvent(calendarEvent) {
@@ -2801,8 +2852,11 @@ function renderGoogleAccounts() {
   const connected = Boolean(account?.importedAt);
   const signedInEmail = state.auth?.googleUser?.email || "Signed-in Google account";
   const importedText = connected
-    ? `${escapeHtml(account.count || 0)} events imported on ${escapeHtml(formatDate(account.importedAt.slice(0, 10)))}`
+    ? `${escapeHtml(account.count || 0)} events synced. ${escapeHtml(formatCalendarSyncStamp(account.importedAt))}`
     : "Connect the calendar for the Google account signed into this CoupleOS instance.";
+  const actionButton = connected
+    ? ""
+    : `<button class="card-action" data-google-person="${escapeHtml(person)}" type="button">Connect calendar</button>`;
 
   target.innerHTML = `
     <article class="google-account-card">
@@ -2811,7 +2865,7 @@ function renderGoogleAccounts() {
         <p>${escapeHtml(connected ? account.email : signedInEmail)}</p>
         <p class="small-note">${importedText}</p>
       </div>
-      <button class="card-action" data-google-person="${escapeHtml(person)}" type="button">${connected ? "Reimport" : "Connect calendar"}</button>
+      ${actionButton}
     </article>
   `;
 }

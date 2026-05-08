@@ -2301,3 +2301,50 @@ body[data-overlay-view="settings"] .modal-close {
     right: 24px;
   }
 }
+
+/* Dashboard calendar cleanup */
+.dashboard-page-head {
+  margin-bottom: 8px;
+}
+
+.calendar-dashboard-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.calendar-dashboard-tools .calendar-view-toggle {
+  display: flex;
+  min-width: 360px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.calendar-sync-stamp {
+  color: var(--muted);
+  flex: 0 0 auto;
+  font-size: 0.74rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .calendar-dashboard-tools {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .calendar-dashboard-tools .calendar-view-toggle {
+    width: 100%;
+    min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .calendar-sync-stamp {
+    white-space: normal;
+  }
+}
