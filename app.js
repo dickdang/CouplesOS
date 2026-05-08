@@ -1,4 +1,4 @@
-﻿const STORAGE_KEY = "coupleOS.production.v1";
+const STORAGE_KEY = "coupleOS.production.v1";
 const GOOGLE_DISCOVERY_DOC = "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest";
 const GOOGLE_SCOPES = "https://www.googleapis.com/auth/calendar.readonly openid email profile";
 const GOOGLE_LOGIN_SCOPES = "openid email profile";
@@ -140,6 +140,8 @@ function renderAuthGate() {
     const label = state.auth?.googleUser?.email ? `Sign out ${state.auth.googleUser.email}` : "Sign out";
     signOut.textContent = label;
   }
+  const settingsSignOut = $("#settingsSignOutButton");
+  if (settingsSignOut) settingsSignOut.textContent = state.auth?.googleUser?.email ? `Sign out ${state.auth.googleUser.email}` : "Sign out";
 }
 
 function requestGoogleToken(scope, options = {}) {
@@ -744,6 +746,8 @@ function bindAuth() {
   if (localButton) localButton.addEventListener("click", signInLocalPrototype);
   const signOutButton = $("#signOutButton");
   if (signOutButton) signOutButton.addEventListener("click", signOut);
+  const settingsSignOutButton = $("#settingsSignOutButton");
+  if (settingsSignOutButton) settingsSignOutButton.addEventListener("click", signOut);
 }
 
 function ensureExecutiveAssistantChat() {
@@ -2733,6 +2737,10 @@ function hasGoogleSetup() {
   return Boolean(state.google.oauth.clientId && state.google.oauth.apiKey);
 }
 
+function signedInCalendarPerson() {
+  return ["partnerA", "partnerB"].includes(state.activeUser) ? state.activeUser : "partnerA";
+}
+
 function renderGoogleAccounts() {
   const clientInput = $("#googleClientId");
   const keyInput = $("#googleApiKey");
@@ -2740,20 +2748,25 @@ function renderGoogleAccounts() {
   if (keyInput) keyInput.value = state.google.oauth.apiKey || "";
   const target = $("#googleAccountList");
   if (!target) return;
-  target.innerHTML = ["partnerA", "partnerB"].map((person) => {
-    const account = state.google.oauth.accounts[person];
-    const connected = Boolean(account?.importedAt);
-    return `
-      <article class="google-account-card">
-        <div>
-          <h4>${escapeHtml(profileName(person))}</h4>
-          <p>${connected ? escapeHtml(account.email) : "Not connected yet"}</p>
-          <p class="small-note">${connected ? `${escapeHtml(account.count || 0)} events imported on ${escapeHtml(formatDate(account.importedAt.slice(0, 10)))}` : "Authorize this person's Google account to import their primary calendar."}</p>
-        </div>
-        <button class="card-action" data-google-person="${escapeHtml(person)}" type="button">${connected ? "Reimport" : "Connect"}</button>
-      </article>
-    `;
-  }).join("");
+
+  const person = signedInCalendarPerson();
+  const account = state.google.oauth.accounts[person];
+  const connected = Boolean(account?.importedAt);
+  const signedInEmail = state.auth?.googleUser?.email || "Signed-in Google account";
+  const importedText = connected
+    ? `${escapeHtml(account.count || 0)} events imported on ${escapeHtml(formatDate(account.importedAt.slice(0, 10)))}`
+    : "Connect the calendar for the Google account signed into this CoupleOS instance.";
+
+  target.innerHTML = `
+    <article class="google-account-card">
+      <div>
+        <h4>My Google Calendar</h4>
+        <p>${escapeHtml(connected ? account.email : signedInEmail)}</p>
+        <p class="small-note">${importedText}</p>
+      </div>
+      <button class="card-action" data-google-person="${escapeHtml(person)}" type="button">${connected ? "Reimport" : "Connect calendar"}</button>
+    </article>
+  `;
 }
 function renderIntegrations() {
   const statusTitle = $("#googleStatusTitle");
@@ -3002,5 +3015,3 @@ function toast(message) {
 }
 
 init();
-
-
