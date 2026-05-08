@@ -2085,3 +2085,120 @@ body.overlay-open .modal-close {
     right: 26px;
   }
 }
+
+/* Compact Calendar Sync overlay */
+#integrations.modal-view {
+  --calendar-sync-width: min(560px, calc(100vw - 48px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  padding-top: 7vh;
+}
+
+#integrations.modal-view .page-head,
+#integrations.modal-view .integration-status,
+#integrations.modal-view .google-account-panel {
+  width: var(--calendar-sync-width);
+  margin: 0;
+  background: #fff;
+  box-shadow: none;
+}
+
+#integrations.modal-view .page-head {
+  padding: 24px 28px 14px;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.16);
+}
+
+#integrations.modal-view .page-head h2 {
+  margin-top: 6px;
+}
+
+#integrations.modal-view .integration-status {
+  padding: 0 28px 18px;
+  border-right: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  border-radius: 0;
+}
+
+#integrations.modal-view .integration-status h3 {
+  margin: 6px 0 0;
+}
+
+#integrations.modal-view .google-account-panel {
+  padding: 18px 28px 28px;
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+}
+
+#integrations.modal-view .panel-head {
+  margin-bottom: 10px;
+}
+
+#integrations.modal-view .google-account-list {
+  display: block;
+}
+
+#integrations.modal-view .google-account-card {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
+}
+
+#integrations.modal-view .google-account-card h4 {
+  margin-bottom: 4px;
+}
+
+#integrations.modal-view .google-account-card p {
+  margin-top: 4px;
+}
+
+#integrations.modal-view .google-account-card .small-note {
+  margin-top: 6px;
+}
+
+#integrations.modal-view .google-account-card .card-action {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+body[data-overlay-view="integrations"] .modal-close {
+  top: calc(7vh + 22px);
+  right: calc(50% - (var(--calendar-sync-width, min(560px, calc(100vw - 48px))) / 2) + 18px);
+}
+
+@media (max-width: 760px) {
+  #integrations.modal-view {
+    --calendar-sync-width: 100%;
+    padding: calc(58px + env(safe-area-inset-top) + 14px) 14px calc(18px + env(safe-area-inset-bottom));
+  }
+
+  #integrations.modal-view .page-head {
+    padding: 22px 56px 12px 18px;
+  }
+
+  #integrations.modal-view .integration-status,
+  #integrations.modal-view .google-account-panel {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  #integrations.modal-view .google-account-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  body[data-overlay-view="integrations"] .modal-close {
+    top: calc(58px + env(safe-area-inset-top) + 24px);
+    right: 24px;
+  }
+}

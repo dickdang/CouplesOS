@@ -1112,6 +1112,7 @@ function showView(view) {
     section.classList.toggle("modal-view", isOverlay && section.id === view);
   });
   document.body.classList.toggle("overlay-open", isOverlay);
+  document.body.dataset.overlayView = isOverlay ? view : "";
   const activeNav = isOverlay ? "" : view;
   $all(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === activeNav));
   if (view === "chat") {
