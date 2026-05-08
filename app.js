@@ -2452,6 +2452,7 @@ function renderAll() {
   renderChat();
   renderTasks();
   renderProjects();
+  renderGoogleAccounts();
   renderIntegrations();
   renderMobileStatus();
   renderSearch();
@@ -3001,4 +3002,5 @@ function toast(message) {
 }
 
 init();
+
 
