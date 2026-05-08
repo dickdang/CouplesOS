@@ -366,12 +366,15 @@ async function connectGoogleCalendar(person) {
     };
     state.google.connected = true;
     mergeImportedGoogleEvents();
-    ensureCalendarAgentChat().messages.push({
+    const agent = ensureCalendarAgentChat();
+    agent.messages.push({
       role: "assistant",
       text: `${profileName(person)} connected Google Calendar and imported ${imported.length} upcoming events.`
     });
+    state.activeChatId = agent.id;
     saveState();
     renderAll();
+    showView("chat");
     toast(`${profileName(person)} calendar imported.`);
   } catch (error) {
     console.warn("Google Calendar import failed", error);
@@ -829,8 +832,8 @@ function bindDashboardCalendar() {
   const importButton = $("#importSharedCalendar");
   if (importButton) {
     importButton.addEventListener("click", () => {
-      showView("integrations");
-      toast(hasGoogleSetup() ? "Choose which partner calendar to import." : "Add Google env vars in Vercel first.");
+      showView(hasConnectedCalendar() ? "dashboard" : "integrations");
+      toast(hasConnectedCalendar() ? "Calendar is already connected." : hasGoogleSetup() ? "Connect your calendar below." : "Add Google env vars in Vercel first.");
     });
   }
 
@@ -1101,15 +1104,15 @@ function closeMobileMenu() {
 
 function showView(view) {
   if (!$(`#${view}`)) view = "chat";
-  const isOverlay = view !== "chat";
+  const overlayViews = ["settings", "integrations"];
+  const isOverlay = overlayViews.includes(view);
   $all(".view").forEach((section) => {
     const active = section.id === view || (isOverlay && section.id === "chat");
     section.classList.toggle("active", active);
     section.classList.toggle("modal-view", isOverlay && section.id === view);
   });
   document.body.classList.toggle("overlay-open", isOverlay);
-  const settingsViews = ["settings", "integrations", "mobile"];
-  const activeNav = settingsViews.includes(view) ? "settings" : view;
+  const activeNav = isOverlay ? "" : view;
   $all(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === activeNav));
   if (view === "chat") {
     if (location.hash) history.replaceState(null, "", location.pathname + location.search);
@@ -1122,9 +1125,13 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") { closeMobileMenu(); if (document.body.classList.contains("overlay-open")) showView("chat"); }
 });
 
+function hasConnectedCalendar() {
+  return Boolean(state.google.connected || Object.values(state.google.oauth?.accounts || {}).some((account) => account?.importedAt));
+}
+
 function needsFirstRunOnboarding() {
   return isAuthenticated()
-    && !state.google.connected
+    && !hasConnectedCalendar()
     && !state.tasks.length
     && !state.google.events.length
     && !state.sharedCalendar.events.length;
@@ -2603,6 +2610,8 @@ function renderPersonalCalendarEvent(calendarEvent) {
 function renderDashboardCalendar() {
   const list = $("#sharedEventList");
   if (!list) return;
+  const quickOnboarding = $("#quickOnboarding");
+  if (quickOnboarding) quickOnboarding.hidden = hasConnectedCalendar();
   const imported = Boolean(state.sharedCalendar.imported);
   const view = state.sharedCalendar.activeView || "shared";
   const person = calendarViewPerson(view);
