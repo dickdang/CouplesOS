@@ -1,4 +1,4 @@
-const STORAGE_KEY = "coupleOS.production.v1";
+﻿const STORAGE_KEY = "coupleOS.production.v1";
 const GOOGLE_DISCOVERY_DOC = "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest";
 const GOOGLE_SCOPES = "https://www.googleapis.com/auth/calendar.readonly openid email profile";
 const GOOGLE_LOGIN_SCOPES = "openid email profile";
@@ -142,25 +142,48 @@ function renderAuthGate() {
   }
 }
 
-function requestGoogleLoginToken() {
+function requestGoogleToken(scope, options = {}) {
   return new Promise((resolve, reject) => {
     if (!window.google || !state.google.oauth.clientId) {
       reject(new Error("Google sign-in is not ready yet."));
       return;
     }
-    const loginClient = google.accounts.oauth2.initTokenClient({
+
+    let settled = false;
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      fn(value);
+    };
+    const timeout = setTimeout(() => {
+      finish(reject, new Error("Google sign-in timed out. Popups may be blocked in this browser."));
+    }, 60000);
+
+    const tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: state.google.oauth.clientId,
-      scope: GOOGLE_LOGIN_SCOPES,
+      scope,
       callback: (response) => {
         if (response.error) {
-          reject(response);
+          finish(reject, new Error(response.error_description || response.error));
           return;
         }
-        resolve(response.access_token);
+        finish(resolve, response.access_token);
+      },
+      error_callback: (error) => {
+        finish(reject, new Error(error?.message || error?.type || "Google sign-in was blocked or closed."));
       }
     });
-    loginClient.requestAccessToken({ prompt: "consent" });
+
+    tokenClient.requestAccessToken({
+      prompt: options.prompt || "consent",
+      hint: options.hint || ""
+    });
   });
+}
+
+function requestGoogleLoginToken() {
+  return requestGoogleToken(GOOGLE_LOGIN_SCOPES, { prompt: "consent" });
 }
 
 async function signInWithGoogle() {
@@ -293,25 +316,22 @@ async function prepareGoogleCalendarApi() {
     showView("integrations");
     return false;
   }
-  if (!googleRuntime.clientReady) await initializeGoogleClient();
-  if (!googleRuntime.tokenClient) initializeGoogleTokenClient();
-  if (!googleRuntime.clientReady || !googleRuntime.tokenClient) {
+  if (!window.google || !window.gapi) {
     toast("Google libraries are still loading. Try again in a moment.");
+    return false;
+  }
+  if (!googleRuntime.clientReady) await initializeGoogleClient();
+  if (!googleRuntime.clientReady) {
+    toast("Google Calendar API did not initialize. Check the API key restrictions and enabled APIs.");
     return false;
   }
   return true;
 }
 
 function requestGoogleAccessToken(person) {
-  return new Promise((resolve, reject) => {
-    googleRuntime.tokenClient.callback = (response) => {
-      if (response.error) {
-        reject(response);
-        return;
-      }
-      resolve(response.access_token);
-    };
-    googleRuntime.tokenClient.requestAccessToken({ prompt: "consent", hint: state.google.oauth.accounts[person]?.email || "" });
+  return requestGoogleToken(GOOGLE_SCOPES, {
+    prompt: "consent",
+    hint: state.google.oauth.accounts[person]?.email || ""
   });
 }
 
@@ -330,6 +350,7 @@ async function fetchGoogleProfile(accessToken) {
 async function connectGoogleCalendar(person) {
   if (!await prepareGoogleCalendarApi()) return;
   try {
+    toast(`Opening ${profileName(person)} Google Calendar permission...`);
     const accessToken = await requestGoogleAccessToken(person);
     const profile = await fetchGoogleProfile(accessToken);
     const imported = await importGoogleCalendarForPerson(person, accessToken, profile);
@@ -350,7 +371,7 @@ async function connectGoogleCalendar(person) {
     toast(`${profileName(person)} calendar imported.`);
   } catch (error) {
     console.warn("Google Calendar import failed", error);
-    toast("Google Calendar import did not complete.");
+    toast(error?.message || "Google Calendar import did not complete.");
   }
 }
 
@@ -2004,15 +2025,27 @@ function bindIntegrations() {
     toast("Calendar event drafted and task chat created.");
   });
 
-  $("#calendarEventList").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-event-action]");
-    if (!button) return;
-    const calendarEvent = state.google.events.find((item) => item.id === button.dataset.eventId);
-    if (!calendarEvent) return;
-    if (button.dataset.eventAction === "mark-synced") calendarEvent.status = "ready-to-sync";
-    saveState();
-    renderIntegrations();
-  });
+  const googleAccountList = $("#googleAccountList");
+  if (googleAccountList) {
+    googleAccountList.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-google-person]");
+      if (!button) return;
+      connectGoogleCalendar(button.dataset.googlePerson);
+    });
+  }
+
+  const calendarEventList = $("#calendarEventList");
+  if (calendarEventList) {
+    calendarEventList.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-event-action]");
+      if (!button) return;
+      const calendarEvent = state.google.events.find((item) => item.id === button.dataset.eventId);
+      if (!calendarEvent) return;
+      if (button.dataset.eventAction === "mark-synced") calendarEvent.status = "ready-to-sync";
+      saveState();
+      renderIntegrations();
+    });
+  }
 }
 
 function registerMobileRuntime() {
@@ -2968,3 +3001,4 @@ function toast(message) {
 }
 
 init();
+
