@@ -22,6 +22,8 @@ Use Vercel first. It gives you the fastest secure URL for iPhone, Android, Googl
 6. Add environment variables:
    - `OPENAI_API_KEY`: your real OpenAI API key.
    - `OPENAI_MODEL`: `gpt-5` unless you intentionally change models.
+   - `GOOGLE_CLIENT_ID`: your Google OAuth web client id.
+   - `GOOGLE_API_KEY`: an API key restricted to the Google Calendar API.
 7. Deploy.
 8. Open the Vercel HTTPS URL on iPhone Safari and Android Chrome.
 
@@ -38,8 +40,8 @@ In Google Cloud Console:
    - `https://YOUR-VERCEL-DOMAIN.vercel.app`
    - any custom production domain later, for example `https://app.couplesos.com`
 5. Create an API key restricted to Google Calendar API.
-6. In CoupleOS, paste the OAuth Client ID on the sign-in page.
-7. After sign-in, go to Settings > Google and save the API key.
+6. In Vercel, add `GOOGLE_CLIENT_ID` and `GOOGLE_API_KEY` for Production and Preview.
+7. Redeploy, then sign in and connect/import both calendars from Settings > Google.
 
 For native Capacitor builds, Google sign-in may need additional OAuth clients for iOS and Android once bundle IDs and SHA fingerprints are finalized.
 
@@ -108,7 +110,7 @@ Before inviting testers:
 
 - Deploy HTTPS app to Vercel.
 - Add `OPENAI_API_KEY` and confirm chat actions work.
-- Add Google OAuth authorized origin for deployed URL.
+- Add Google OAuth authorized origin for deployed URL and set `GOOGLE_CLIENT_ID` / `GOOGLE_API_KEY` in Vercel.
 - Confirm iPhone Safari login works.
 - Confirm Android Chrome login works.
 - Confirm task notes persist after reload.

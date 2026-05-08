@@ -176,6 +176,14 @@ async function callResponses(payload) {
   return data;
 }
 
+
+function handleConfig(_request, response) {
+  json(response, 200, {
+    googleClientId: process.env.GOOGLE_CLIENT_ID || "",
+    googleApiKey: process.env.GOOGLE_API_KEY || "",
+    googleConfigured: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_API_KEY)
+  });
+}
 async function handleChat(request, response) {
   if (!process.env.OPENAI_API_KEY) {
     json(response, 503, {
@@ -253,6 +261,11 @@ createServer(async (request, response) => {
         "Access-Control-Allow-Headers": "Content-Type"
       });
       response.end();
+      return;
+    }
+
+    if (url.pathname === "/api/config" && request.method === "GET") {
+      handleConfig(request, response);
       return;
     }
 

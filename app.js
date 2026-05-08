@@ -1,4 +1,4 @@
-const STORAGE_KEY = "householdAssistant.v1";
+const STORAGE_KEY = "coupleOS.production.v1";
 const GOOGLE_DISCOVERY_DOC = "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest";
 const GOOGLE_SCOPES = "https://www.googleapis.com/auth/calendar.readonly openid email profile";
 const GOOGLE_LOGIN_SCOPES = "openid email profile";
@@ -14,7 +14,7 @@ const defaultState = {
     appSignedIn: false,
     googleUser: null,
     localPrototype: false,
-    partnerA: { signedIn: true },
+    partnerA: { signedIn: false },
     partnerB: { signedIn: false }
   },
   profiles: {
@@ -39,7 +39,7 @@ const defaultState = {
   sharedCalendar: {
     imported: false,
     activeView: "shared",
-    events: defaultSharedEvents()
+    events: []
   },
   lastOutcome: null
 };
@@ -164,20 +164,22 @@ function requestGoogleLoginToken() {
 }
 
 async function signInWithGoogle() {
-  const clientInput = $("#loginGoogleClientId");
-  const clientId = (clientInput?.value || state.google?.oauth?.clientId || "").trim();
+  let clientId = (state.google?.oauth?.clientId || "").trim();
   if (!clientId) {
-    setLoginStatus("Paste your Google OAuth Client ID first. You can create it in Google Cloud for this local app URL.");
+    await loadHostedConfig();
+    clientId = (state.google?.oauth?.clientId || "").trim();
+  }
+  if (!clientId) {
+    setLoginStatus("Google sign-in is not configured yet. Add GOOGLE_CLIENT_ID and GOOGLE_API_KEY in Vercel, then redeploy.");
     return;
   }
-  state.google.oauth.clientId = clientId;
-  saveState();
 
   if (!window.google) {
     setLoginStatus("Google sign-in is still loading. Try again in a moment.");
     return;
   }
 
+  initializeGoogleTokenClient();
   setLoginStatus("Opening Google sign-in...");
   try {
     const accessToken = await requestGoogleLoginToken();
@@ -201,14 +203,55 @@ async function signInWithGoogle() {
       name: profile?.name || profileName("partnerA")
     };
     state.activeUser = "partnerA";
-    initializeGoogleTokenClient();
     saveState();
     renderAll();
-    showView("chat");
+    showView("dashboard");
     toast("Signed in with Google Workspace.");
   } catch (error) {
     console.warn("Google sign-in failed", error);
-    setLoginStatus("Google sign-in did not complete. Check the OAuth Client ID and authorized origin, then try again.");
+    setLoginStatus("Google sign-in did not complete. Confirm your Vercel URL is an authorized JavaScript origin in Google Cloud, then try again.");
+  }
+}
+
+async function loadHostedConfig() {
+  if (location.protocol === "file:") {
+    renderGoogleConfigStatus();
+    return false;
+  }
+  try {
+    const response = await fetch("/api/config", { cache: "no-store" });
+    if (!response.ok) throw new Error("Config endpoint unavailable");
+    const config = await response.json();
+    let changed = false;
+    if (config.googleClientId && config.googleClientId !== state.google.oauth.clientId) {
+      state.google.oauth.clientId = config.googleClientId;
+      changed = true;
+    }
+    if (config.googleApiKey && config.googleApiKey !== state.google.oauth.apiKey) {
+      state.google.oauth.apiKey = config.googleApiKey;
+      changed = true;
+    }
+    if (changed) saveState();
+    initializeGoogleTokenClient();
+    initializeGoogleClient();
+    renderAll();
+    return Boolean(config.googleConfigured);
+  } catch (error) {
+    console.warn("Hosted config failed to load", error);
+    renderGoogleConfigStatus();
+    return false;
+  }
+}
+
+function renderGoogleConfigStatus() {
+  const target = $("#googleConfigStatus");
+  if (!target) return;
+  if (hasGoogleSetup()) {
+    target.textContent = "Google OAuth is configured from Vercel. Connect each person's calendar below.";
+  } else if (location.protocol === "file:") {
+    target.textContent = "Google OAuth needs the hosted Vercel app because credentials are read from server environment variables.";
+  } else {
+    target.textContent = "Missing GOOGLE_CLIENT_ID or GOOGLE_API_KEY in Vercel Environment Variables.";
   }
 }
 
@@ -225,7 +268,7 @@ function signInLocalPrototype() {
   state.activeUser = "partnerA";
   saveState();
   renderAll();
-  showView("chat");
+  showView("dashboard");
   toast("Local prototype mode enabled.");
 }
 
@@ -246,7 +289,7 @@ function signOut() {
 
 async function prepareGoogleCalendarApi() {
   if (!state.google.oauth.clientId || !state.google.oauth.apiKey) {
-    toast("Add your Google Client ID and API key in Settings > Google.");
+    toast("Google Calendar is not configured yet. Add GOOGLE_CLIENT_ID and GOOGLE_API_KEY in Vercel, then redeploy.");
     showView("integrations");
     return false;
   }
@@ -435,57 +478,7 @@ function emptyProfile(name) {
 }
 
 function defaultSharedEvents() {
-  return [
-    {
-      id: "shared-venue-tour",
-      title: "Venue tour",
-      date: addDays(todayISO(), 3),
-      time: "16:00",
-      endTime: "17:00",
-      location: "Downtown venue",
-      address: "Downtown venue district",
-      category: "Wedding",
-      availability: { partnerA: "soft", partnerB: "free" },
-      proximity: { partnerA: 18, partnerB: 8 },
-      suggestedTasks: [
-        { title: "Confirm parking and arrival instructions", owner: "partnerB", success: "Venue confirms parking, entrance, and arrival time." },
-        { title: "Prepare venue questions", owner: "partnerA", success: "Top questions are written before the tour." },
-        { title: "Add tour details to shared calendar", owner: "both", success: "Calendar event has location, notes, and travel buffer." }
-      ]
-    },
-    {
-      id: "shared-family-dinner",
-      title: "Family dinner",
-      date: addDays(todayISO(), 5),
-      time: "18:30",
-      endTime: "20:00",
-      location: "Parents' house",
-      address: "Family home",
-      category: "Family",
-      availability: { partnerA: "free", partnerB: "soft" },
-      proximity: { partnerA: 12, partnerB: 24 },
-      suggestedTasks: [
-        { title: "Pick up dessert", owner: "partnerA", success: "Dessert is picked up before dinner." },
-        { title: "Confirm who is attending", owner: "partnerB", success: "Final headcount is confirmed." }
-      ]
-    },
-    {
-      id: "shared-kids-pickup",
-      title: "School pickup window",
-      date: addDays(todayISO(), 1),
-      time: "15:30",
-      endTime: "16:00",
-      location: "School",
-      address: "School pickup lane",
-      category: "Family",
-      availability: { partnerA: "busy", partnerB: "free" },
-      proximity: { partnerA: 28, partnerB: 9 },
-      suggestedTasks: [
-        { title: "Handle pickup", owner: "partnerB", success: "Kids are picked up during the pickup window." },
-        { title: "Send pickup note", owner: "partnerA", success: "The pickup plan is confirmed in the family thread." }
-      ]
-    }
-  ];
+  return [];
 }
 
 function normalizeSharedEvent(event) {
@@ -547,7 +540,7 @@ function loadState() {
       : structuredClone(defaultState);
 
     if (!["mine", "jess", "shared"].includes(merged.sharedCalendar.activeView)) merged.sharedCalendar.activeView = "shared";
-    merged.sharedCalendar.events = (merged.sharedCalendar.events && merged.sharedCalendar.events.length ? merged.sharedCalendar.events : defaultSharedEvents()).map(normalizeSharedEvent);
+    merged.sharedCalendar.events = (merged.sharedCalendar.events || []).map(normalizeSharedEvent);
     merged.tasks = (merged.tasks || []).map(normalizeTask);
     if (!["partnerA", "partnerB"].includes(merged.activeUser)) merged.activeUser = "partnerA";
     if (!merged.activeChatId && merged.tasks.length) merged.activeChatId = merged.tasks[0].id;
@@ -704,20 +697,17 @@ function init() {
   bindMobileShell();
   bindChat();
   bindSearch();
-  bindProfiles();
   bindTasks();
   bindPlanning();
   bindIntegrations();
   bindDashboardCalendar();
   bindMobile();
-  bindLearning();
-  bindDemo();
-  ensureCalendarAgentChat();
   saveState();
   registerMobileRuntime();
   setDefaultDates();
   renderAll();
   routeFromHash();
+  loadHostedConfig();
 }
 
 
@@ -813,7 +803,15 @@ function bindDashboardCalendar() {
   if (importButton) {
     importButton.addEventListener("click", () => {
       showView("integrations");
-      toast(hasGoogleSetup() ? "Choose which partner calendar to import." : "Add Google API setup first.");
+      toast(hasGoogleSetup() ? "Choose which partner calendar to import." : "Add Google env vars in Vercel first.");
+    });
+  }
+
+  const onboardingConnect = $("#onboardingConnectCalendar");
+  if (onboardingConnect) {
+    onboardingConnect.addEventListener("click", () => {
+      showView("integrations");
+      toast(hasGoogleSetup() ? "Connect Rich and Jess calendars below." : "Add Google env vars in Vercel first.");
     });
   }
 
@@ -1052,7 +1050,7 @@ function closeMobileMenu() {
 function showView(view) {
   if (!$(`#${view}`)) view = "chat";
   $all(".view").forEach((section) => section.classList.toggle("active", section.id === view));
-  const settingsViews = ["settings", "onboarding", "learning", "integrations", "mobile"];
+  const settingsViews = ["settings", "integrations", "mobile"];
   const activeNav = settingsViews.includes(view) ? "settings" : view;
   $all(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === activeNav));
   if (view === "chat") {
@@ -1066,10 +1064,18 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closeMobileMenu();
 });
 
+function needsFirstRunOnboarding() {
+  return isAuthenticated()
+    && !state.google.connected
+    && !state.tasks.length
+    && !state.google.events.length
+    && !state.sharedCalendar.events.length;
+}
+
 function routeFromHash() {
   const view = location.hash.replace("#", "");
   if (view && view !== "dashboard" && $(`#${view}`)) showView(view);
-  else showView("chat");
+  else showView(needsFirstRunOnboarding() ? "dashboard" : "chat");
 }
 
 function activeTask() {
@@ -1722,6 +1728,8 @@ function createCalendarDraftFromChat(task, text) {
 }
 
 function bindProfiles() {
+  const form = $("#profileForm");
+  if (!form) return;
   $all(".segment").forEach((button) => {
     button.addEventListener("click", () => {
       state.activePerson = button.dataset.person;
@@ -1730,29 +1738,13 @@ function bindProfiles() {
     });
   });
 
-  $("#profileForm").addEventListener("submit", (event) => {
+  form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const person = state.activePerson;
-    state.profiles[person] = {
-      name: $("#profileName").value.trim() || profileName(person),
-      planningStyle: $("#planningStyle").value,
-      accountabilityTone: $("#accountabilityTone").value,
-      conflictPattern: $("#conflictPattern").value,
-      repairAttempts: $("#repairAttempts").value.trim(),
-      values: $("#values").value.trim(),
-      fairness: $("#fairness").value.trim(),
-      avoid: $("#avoid").value.trim(),
-      energy: $("#energy").value,
-      notice: $("#notice").value
-    };
-    addLearning(person, `${profileName(person)} responds best to ${state.profiles[person].accountabilityTone} accountability and ${state.profiles[person].planningStyle}.`, "Onboarding");
-    saveState();
-    renderAll();
-    toast(`${profileName(person)} profile saved.`);
   });
 }
 
 function renderProfileForm() {
+  if (!$(`#profileForm`)) return;
   const person = state.activePerson;
   const profile = state.profiles[person];
   $all(".segment").forEach((button) => button.classList.toggle("active", button.dataset.person === person));
@@ -1947,12 +1939,15 @@ function setDefaultDates() {
 }
 
 function bindIntegrations() {
-  $("#toggleGoogleConnection").addEventListener("click", () => {
-    state.google.connected = !state.google.connected;
-    saveState();
-    renderIntegrations();
-    toast(state.google.connected ? "Google Calendar marked connected." : "Google Calendar marked disconnected.");
-  });
+  const toggleConnection = $("#toggleGoogleConnection");
+  if (toggleConnection) {
+    toggleConnection.addEventListener("click", () => {
+      state.google.connected = !state.google.connected;
+      saveState();
+      renderIntegrations();
+      toast(state.google.connected ? "Google Calendar marked connected." : "Google Calendar marked disconnected.");
+    });
+  }
 
   $("#calendarReviewForm").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -2319,7 +2314,9 @@ function mergeTop(listA, listB, fallback) {
 }
 
 function bindLearning() {
-  $("#learningForm").addEventListener("submit", (event) => {
+  const form = $("#learningForm");
+  if (!form) return;
+  form.addEventListener("submit", (event) => {
     event.preventDefault();
     addLearning($("#learningPerson").value, $("#learningSignal").value.trim(), $("#learningSource").value);
     event.target.reset();
@@ -2531,7 +2528,6 @@ function renderPersonalCalendarEvent(calendarEvent) {
 function renderDashboardCalendar() {
   const list = $("#sharedEventList");
   if (!list) return;
-  const agent = ensureCalendarAgentChat();
   const imported = Boolean(state.sharedCalendar.imported);
   const view = state.sharedCalendar.activeView || "shared";
   const person = calendarViewPerson(view);
@@ -2726,38 +2722,50 @@ function renderGoogleAccounts() {
   }).join("");
 }
 function renderIntegrations() {
-  $("#googleStatusTitle").textContent = state.google.connected
-    ? "Google Calendar connected"
-    : "Google Calendar not connected";
-  $("#toggleGoogleConnection").textContent = state.google.connected ? "Disconnect" : "Mark connected";
-  const latest = state.google.recommendations[0];
-  $("#calendarRecommendation").innerHTML = latest
-    ? `
-      <div class="recommendation-result">
-        <strong>${escapeHtml(latest.ownerName)}</strong>
-        <p>${escapeHtml(latest.needLabel)} at ${escapeHtml(latest.destination)} should go to ${escapeHtml(latest.ownerName)}. ${escapeHtml(latest.reason)}.</p>
-        <p class="small-note">Backup: ${escapeHtml(latest.backupName)}${latest.context ? ` - ${escapeHtml(latest.context)}` : ""}</p>
-      </div>
-    `
-    : `<div class="empty-state"><strong>No recommendation yet.</strong><p>Review availability and proximity to decide who should own the handoff.</p></div>`;
+  const statusTitle = $("#googleStatusTitle");
+  if (statusTitle) {
+    statusTitle.textContent = state.google.connected
+      ? "Google Calendar connected"
+      : "Google Calendar not connected";
+  }
+  const toggle = $("#toggleGoogleConnection");
+  if (toggle) toggle.textContent = state.google.connected ? "Disconnect" : "Mark connected";
+  renderGoogleConfigStatus();
 
-  $("#calendarEventList").innerHTML = state.google.events.length
-    ? state.google.events.map((calendarEvent) => `
-      <article class="event-card">
-        <div>
-          <h4>${escapeHtml(calendarEvent.title)}</h4>
-          <p>${escapeHtml(calendarEventSummary(calendarEvent))}</p>
+  const recommendationTarget = $("#calendarRecommendation");
+  if (recommendationTarget) {
+    const latest = state.google.recommendations[0];
+    recommendationTarget.innerHTML = latest
+      ? `
+        <div class="recommendation-result">
+          <strong>${escapeHtml(latest.ownerName)}</strong>
+          <p>${escapeHtml(latest.needLabel)} at ${escapeHtml(latest.destination)} should go to ${escapeHtml(latest.ownerName)}. ${escapeHtml(latest.reason)}.</p>
+          <p class="small-note">Backup: ${escapeHtml(latest.backupName)}${latest.context ? ` - ${escapeHtml(latest.context)}` : ""}</p>
         </div>
-        <div class="badge-row">
-          <span class="badge">${escapeHtml(calendarEvent.status)}</span>
-          <span class="badge blue">${escapeHtml(calendarLabel(calendarEvent.calendar))}</span>
-        </div>
-        <div class="card-actions">
-          <button class="card-action" data-event-action="mark-synced" data-event-id="${escapeHtml(calendarEvent.id)}" type="button">Ready to sync</button>
-        </div>
-      </article>
-    `).join("")
-    : emptyState();
+      `
+      : `<div class="empty-state"><strong>No recommendation yet.</strong><p>Review availability and proximity to decide who should own the handoff.</p></div>`;
+  }
+
+  const eventList = $("#calendarEventList");
+  if (eventList) {
+    eventList.innerHTML = state.google.events.length
+      ? state.google.events.map((calendarEvent) => `
+        <article class="event-card">
+          <div>
+            <h4>${escapeHtml(calendarEvent.title)}</h4>
+            <p>${escapeHtml(calendarEventSummary(calendarEvent))}</p>
+          </div>
+          <div class="badge-row">
+            <span class="badge">${escapeHtml(calendarEvent.status)}</span>
+            <span class="badge blue">${escapeHtml(calendarLabel(calendarEvent.calendar))}</span>
+          </div>
+          <div class="card-actions">
+            <button class="card-action" data-event-action="mark-synced" data-event-id="${escapeHtml(calendarEvent.id)}" type="button">Ready to sync</button>
+          </div>
+        </article>
+      `).join("")
+      : emptyState();
+  }
 }
 
 function renderChatList() {
@@ -2927,7 +2935,9 @@ function renderTask(task) {
 }
 
 function renderLearning() {
-  $("#learningList").innerHTML = state.learnings.length
+  const list = $("#learningList");
+  if (!list) return;
+  list.innerHTML = state.learnings.length
     ? state.learnings.map((item) => `
       <article class="learning-card">
         <div class="learning-top">
@@ -2958,24 +2968,3 @@ function toast(message) {
 }
 
 init();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

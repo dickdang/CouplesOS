@@ -29,14 +29,9 @@
           <p>Use Google Workspace to create the shared household assistant for Rich and Jess.</p>
         </div>
         <form id="loginForm" class="login-form">
-          <label>
-            Google OAuth Client ID
-            <input id="loginGoogleClientId" autocomplete="off" placeholder="1234567890-abc.apps.googleusercontent.com" />
-          </label>
           <button class="primary-button" id="googleSignupButton" type="submit">Continue with Google Workspace</button>
         </form>
-        <button class="secondary-button login-secondary" id="localPrototypeLogin" type="button">Continue in local prototype</button>
-        <p class="small-note" id="loginStatus">Google sign-up requires the OAuth Client ID from Google Cloud.</p>
+        <p class="small-note" id="loginStatus">Sign in with Google to connect calendars and start your shared setup.</p>
       </div>
     </section>
     <header class="mobile-topbar" aria-label="Mobile navigation">
@@ -88,6 +83,18 @@
 
       <main class="content">
         <section class="view" id="dashboard">
+          <section class="panel quick-onboarding" id="quickOnboarding" aria-label="First run setup">
+            <div>
+              <p class="eyebrow">Start here</p>
+              <h2>Connect calendars, then turn life into tasks and projects</h2>
+            </div>
+            <div class="quick-onboarding-actions">
+              <button class="primary-button" id="onboardingConnectCalendar" type="button">Connect calendars</button>
+              <button class="secondary-button" data-jump="tasks" type="button">Create first task</button>
+              <button class="secondary-button" data-jump="projects" type="button">Create first project</button>
+            </div>
+          </section>
+
           <section class="calendar-dashboard" aria-label="Shared Google Calendar dashboard">
             <div class="calendar-dashboard-head">
               <div>
@@ -136,7 +143,6 @@
                     <button class="user-chip active" data-login-user="partnerA" type="button">Rich</button>
                     <button class="user-chip" data-login-user="partnerB" type="button">Jess</button>
                   </div>
-                  <button class="secondary-button" id="seedDemo" type="button">Load example</button>
                 </div>
               </header>
 
@@ -202,28 +208,11 @@
           <div class="page-head">
             <div>
               <p class="eyebrow">Settings</p>
-              <h2>Profiles, preferences, and plugins</h2>
+              <h2>Calendar, mobile, and app setup</h2>
             </div>
           </div>
 
           <section class="settings-grid">
-            <article class="panel settings-card">
-              <div>
-                <p class="eyebrow">People</p>
-                <h3>Onboarding</h3>
-                <p>Set each person's planning style, reminder tone, conflict pattern, and repair preferences.</p>
-              </div>
-              <button class="secondary-button" data-jump="onboarding" type="button">Open</button>
-            </article>
-
-            <article class="panel settings-card">
-              <div>
-                <p class="eyebrow">Memory</p>
-                <h3>Preferences</h3>
-                <p>Review the patterns CoupleOS has learned from chats, tasks, calendar decisions, and reminders.</p>
-              </div>
-              <button class="secondary-button" data-jump="learning" type="button">Open</button>
-            </article>
 
             <article class="panel settings-card">
               <div>
@@ -252,95 +241,6 @@
               <button class="secondary-button" data-jump="projects" type="button">Open</button>
             </article>
           </section>
-        </section>
-
-        <section class="view" id="onboarding">
-          <div class="page-head">
-            <div>
-              <p class="eyebrow">Personality based setup</p>
-              <h2>Each person sets their own preferences</h2>
-            </div>
-          </div>
-
-          <form id="profileForm" class="form-grid">
-            <section class="panel form-panel">
-              <div class="segmented" role="tablist" aria-label="Profile owner">
-                <button class="segment active" data-person="partnerA" type="button">Rich</button>
-                <button class="segment" data-person="partnerB" type="button">Jess</button>
-              </div>
-
-              <label>
-                Name
-                <input id="profileName" name="profileName" autocomplete="name" placeholder="First name" />
-              </label>
-
-              <label>
-                When life gets busy, I do best with
-                <select id="planningStyle" name="planningStyle">
-                  <option value="clear steps">Clear steps</option>
-                  <option value="flexible options">Flexible options</option>
-                  <option value="a short deadline">A short deadline</option>
-                  <option value="a shared plan">A shared plan</option>
-                </select>
-              </label>
-
-              <label>
-                Accountability tone
-                <select id="accountabilityTone" name="accountabilityTone">
-                  <option value="warm and direct">Warm and direct</option>
-                  <option value="gentle and curious">Gentle and curious</option>
-                  <option value="brief and practical">Brief and practical</option>
-                  <option value="encouraging with context">Encouraging with context</option>
-                </select>
-              </label>
-
-              <label>
-                In conflict, I tend to
-                <select id="conflictPattern" name="conflictPattern">
-                  <option value="solve quickly">Try to solve quickly</option>
-                  <option value="need time">Need time before solving</option>
-                  <option value="explain a lot">Explain a lot</option>
-                  <option value="go quiet">Go quiet</option>
-                </select>
-              </label>
-
-              <label>
-                Repair attempts that work for me
-                <textarea id="repairAttempts" name="repairAttempts" rows="3" placeholder="Example: a sincere apology, a hug, humor, a 20 minute pause"></textarea>
-              </label>
-            </section>
-
-            <section class="panel form-panel">
-              <label>
-                My top values at home
-                <textarea id="values" name="values" rows="3" placeholder="Example: reliability, calm mornings, equal partnership"></textarea>
-              </label>
-
-              <label>
-                What makes a task feel fair to me
-                <textarea id="fairness" name="fairness" rows="3" placeholder="Example: visible effort, shared standards, enough notice"></textarea>
-              </label>
-
-              <label>
-                The assistant should avoid
-                <textarea id="avoid" name="avoid" rows="3" placeholder="Example: nagging, vague reminders, last-minute pressure"></textarea>
-              </label>
-
-              <label>
-                Energy level most evenings
-                <input id="energy" name="energy" type="range" min="1" max="5" value="3" />
-                <span class="range-labels"><span>Low</span><span>High</span></span>
-              </label>
-
-              <label>
-                Need for advance notice
-                <input id="notice" name="notice" type="range" min="1" max="5" value="3" />
-                <span class="range-labels"><span>Same day OK</span><span>Plan ahead</span></span>
-              </label>
-
-              <button class="primary-button" type="submit">Save profile</button>
-            </section>
-          </form>
         </section>
 
         <section class="view" id="tasks">
@@ -496,28 +396,9 @@
             <div>
               <p class="eyebrow">Connection</p>
               <h3 id="googleStatusTitle">Google Calendar not connected</h3>
-              <p class="small-note">Prototype mode stores calendar intelligence locally. A production version would use Google OAuth, Calendar API, Maps/Routes, Gmail, and Contacts.</p>
+              <p class="small-note" id="googleConfigStatus">Google OAuth credentials load from Vercel environment variables.</p>
             </div>
-            <button class="primary-button" id="toggleGoogleConnection" type="button">Mark connected</button>
           </section>
-
-
-          <form id="googleConfigForm" class="panel google-config-form">
-            <div class="wide">
-              <p class="eyebrow">Google API setup</p>
-              <h3>Connect real Google calendars</h3>
-              <p class="small-note">Paste the OAuth Client ID and API key from Google Cloud. Use the Calendar API with the authorized origin that matches where you run this app.</p>
-            </div>
-            <label class="wide">
-              OAuth Client ID
-              <input id="googleClientId" autocomplete="off" placeholder="1234567890-abc.apps.googleusercontent.com" />
-            </label>
-            <label class="wide">
-              API key
-              <input id="googleApiKey" autocomplete="off" placeholder="AIza..." />
-            </label>
-            <button class="primary-button" type="submit">Save Google setup</button>
-          </form>
 
           <section class="panel google-account-panel">
             <div class="panel-head">
@@ -691,42 +572,6 @@
             </div>
           </section>
         </section>
-
-        <section class="view" id="learning">
-          <div class="page-head">
-            <div>
-              <p class="eyebrow">Memory</p>
-              <h2>Preference signals the assistant has learned</h2>
-            </div>
-          </div>
-
-          <form id="learningForm" class="panel learning-form">
-            <label>
-              Person
-              <select id="learningPerson">
-                <option value="partnerA">Rich</option>
-                <option value="partnerB">Jess</option>
-                <option value="both">Both</option>
-              </select>
-            </label>
-            <label class="wide">
-              Preference or pattern
-              <input id="learningSignal" required placeholder="Example: prefers reminders the night before, not the morning of" />
-            </label>
-            <label>
-              Source
-              <select id="learningSource">
-                <option>Onboarding</option>
-                <option>Task follow-up</option>
-                <option>Disagreement</option>
-                <option>Manual note</option>
-              </select>
-            </label>
-            <button class="primary-button" type="submit">Add learning</button>
-          </form>
-
-          <div id="learningList" class="learning-list"></div>
-        </section>
       </main>
     </div>
 
@@ -742,12 +587,3 @@
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
   </body>
 </html>
-
-
-
-
-
-
-
-
-

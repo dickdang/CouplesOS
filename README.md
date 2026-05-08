@@ -11,15 +11,15 @@ For production-style phone testing, deploy this repo to an HTTPS host such as Ve
 - One chat per task, with a renameable chat name and dedicated supporting agent.
 - Shared task chats for two separate partner sign-ins, with message attribution like a lightweight group chat.
 - Task notes for supporting details such as grocery lists, pickup instructions, prep details, and links.
-- Settings groups onboarding, learned preferences, plugins such as Google, mobile install status, and planning tools.
+- Settings now focuses on production setup: Google, mobile install status, and planning tools.
 - A right-side task context panel for status, owner, due date, definition of done, and agent stance.
 - Overdue reminder drafts for email, text, or AI phone call scripts that ask whether the owner needs help or is just behind.
 - A planning page that turns large projects, including a wedding or weekly meal prep, into multiple task chats with owners, dates, agents, and one-time or recurring rhythms.
 - Google Calendar prototype workflows for reviewing availability, comparing proximity, recommending who should handle a pickup/errand/meeting, and drafting calendar events.
 - Mobile web app metadata and responsive phone-first layouts for using CoupleOS from a home-screen web app.
 - Cross-platform PWA support for iOS and Android with a web app manifest, icon, safe-area styling, install status screen, and offline app shell.
-- Separate onboarding profiles for each partner.
-- Preference learning from onboarding, tasks, disagreements, and manual notes.
+- Quick first-run onboarding starts with connecting calendars, then creating tasks or projects.
+- Internal preference signals can still be learned from tasks, disagreements, and manual notes later, but the preference UI is removed for now.
 - Accountability tasks with owner, due date, finish line, status, and coaching hints.
 - Natural chat guidance for disagreements that keeps the mood light, protects both people's interests, and turns the next step back into an accountable task.
 
@@ -27,9 +27,9 @@ This is coaching support and relationship organization, not couples therapy, med
 
 Reminder outreach is drafted and logged locally in this prototype. It does not actually send email, send SMS, or place calls yet.
 
-Google Suite integration is also prototype-local for now. A production version would connect Google OAuth, Google Calendar, Gmail, Contacts, and Maps/Routes APIs before syncing real events or using real location data.
+Google Calendar import now uses Google OAuth credentials supplied by the hosted environment. Gmail, Contacts, Maps/Routes, and persistent server-side calendar sync are still future production integrations.
 
-CoupleOS now starts behind a Google Workspace sign-in page. For local prototyping, paste the OAuth Client ID on the login screen or use local prototype mode. A production version should move the OAuth Client ID into server configuration, add private user accounts, shared household permissions, and audit history for who sent each message.
+CoupleOS starts behind a Google Workspace sign-in page. In Vercel, set `GOOGLE_CLIENT_ID` and `GOOGLE_API_KEY`; users should not paste developer credentials into the app. A production auth layer still needs private user accounts, shared household permissions, and audit history for who sent each message.
 
 ## Mobile
 
@@ -84,7 +84,7 @@ $env:OPENAI_MODEL="gpt-5"
 node server.mjs 5173
 ```
 
-For real iPhone/Android testing without a local server, deploy to Vercel with `OPENAI_API_KEY` set and open the HTTPS deployment URL. OpenAI chat will not run from the `file://` URL because the browser needs `/api/chat`.
+For real iPhone/Android testing without a local server, deploy to Vercel with `OPENAI_API_KEY`, `GOOGLE_CLIENT_ID`, and `GOOGLE_API_KEY` set, then open the HTTPS deployment URL. OpenAI chat will not run from the `file://` URL because the browser needs `/api/chat`. Google OAuth also needs the hosted origin configured in Google Cloud.
 
 Calendar actions are local drafts at this stage. They appear in Settings > Google and can be promoted into real Google Calendar sync once write-scoped OAuth and approval rules are added.
 
@@ -98,10 +98,9 @@ CouplesOS now supports live Google Calendar imports in the browser using Google 
 3. Create an OAuth 2.0 Client ID for a Web application.
 4. Create an API key restricted to the Google Calendar API.
 5. Add authorized JavaScript origins for where you run the app. For local desktop testing, add `http://localhost:5173`.
-6. Open CoupleOS, paste the OAuth Client ID on the sign-in screen, and continue with Google Workspace. After entering the app, go to Settings > Google, paste the API key if needed, and save.
-7. Connect/import Partner A, then connect/import Partner B. Each person must choose and approve their own Google account.
+6. Add `GOOGLE_CLIENT_ID` and `GOOGLE_API_KEY` as Vercel Environment Variables for Production and Preview, then redeploy.
+7. Open CoupleOS, sign in with Google Workspace, then connect/import Rich and Jess calendars from Settings > Google. Each person must choose and approve their own Google account.
 
 The app imports upcoming events from each primary calendar. Events are treated as shared when they appear on both imports with the same Google iCalUID, or when the event attendee list includes both connected emails.
 
 Important: Google OAuth is usually limited to authorized origins and generally requires HTTPS outside localhost. Testing OAuth from `http://YOUR-LAN-IP:5173` on a phone may not work unless Google accepts that origin for your OAuth client. For reliable iPhone/Android OAuth testing, deploy to an HTTPS URL or use an HTTPS tunnel, then add that origin in Google Cloud.
-

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node server.mjs 5173",
-    "check": "node --check app.js && node --check server.mjs && node --check api/chat.js && node --check scripts/prepare-web.mjs",
+    "check": "node --check app.js && node --check server.mjs && node --check api/chat.js && node --check api/config.js && node --check scripts/prepare-web.mjs",
     "prepare:web": "node scripts/prepare-web.mjs",
     "cap:init": "npx cap init CouplesOS com.couplesos.app --web-dir www",
     "cap:ios": "npm run prepare:web && npx cap add ios && npx cap sync ios",
