@@ -1785,3 +1785,193 @@ textarea:focus {
     flex: 1 1 100%;
   }
 }
+
+.account-menu {
+  position: relative;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--dark-line);
+}
+
+.account-menu-button {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius);
+  color: #f9f9f9;
+  background: transparent;
+  text-align: left;
+}
+
+.account-menu-button:hover,
+.account-menu-button[aria-expanded="true"] {
+  background: var(--sidebar-hover);
+}
+
+.account-avatar {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #a8b7b4;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.account-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.account-copy strong,
+.account-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-copy small {
+  color: #a3a3a3;
+  font-size: 0.76rem;
+}
+
+.account-menu-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 80;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+}
+
+.account-menu-panel[hidden] {
+  display: none;
+}
+
+.account-menu-panel button {
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.account-menu-panel button:hover {
+  background: var(--surface-soft);
+}
+
+.modal-close {
+  display: none;
+}
+
+body.overlay-open #chat {
+  filter: blur(1px);
+}
+
+body.overlay-open .modal-close {
+  position: fixed;
+  top: calc(6vh + 14px);
+  left: calc(50% - min(450px, calc(50vw - 24px)) + 16px);
+  z-index: 90;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+body.overlay-open .modal-close:hover {
+  background: var(--surface-soft);
+}
+
+.view.modal-view {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  min-height: 0;
+  padding: 6vh 24px;
+  overflow: auto;
+  background: rgba(247, 247, 248, 0.82);
+  backdrop-filter: blur(2px);
+}
+
+.view.modal-view > * {
+  width: min(900px, calc(100vw - 48px));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.view.modal-view .page-head,
+.view.modal-view .calendar-dashboard,
+.view.modal-view .settings-grid,
+.view.modal-view .task-form,
+.view.modal-view .plan-form,
+.view.modal-view .projects-layout,
+.view.modal-view .google-account-panel,
+.view.modal-view .integration-status,
+.view.modal-view .mobile-grid,
+.view.modal-view .mobile-checklist,
+.view.modal-view .search-panel,
+.view.modal-view .task-list,
+.view.modal-view .filter-row {
+  width: min(900px, calc(100vw - 48px));
+}
+
+#integrations.modal-view .page-head,
+#integrations.modal-view .integration-status,
+#integrations.modal-view .google-account-panel {
+  width: min(680px, calc(100vw - 48px));
+}
+
+@media (max-width: 760px) {
+  body.overlay-open .modal-close {
+    top: calc(58px + env(safe-area-inset-top) + 10px);
+    left: 18px;
+  }
+
+  .view.modal-view {
+    padding: calc(58px + env(safe-area-inset-top) + 56px) 14px calc(18px + env(safe-area-inset-bottom));
+  }
+
+  .view.modal-view > *,
+  .view.modal-view .page-head,
+  .view.modal-view .calendar-dashboard,
+  .view.modal-view .settings-grid,
+  .view.modal-view .task-form,
+  .view.modal-view .plan-form,
+  .view.modal-view .projects-layout,
+  .view.modal-view .google-account-panel,
+  .view.modal-view .integration-status,
+  .view.modal-view .mobile-grid,
+  .view.modal-view .mobile-checklist,
+  .view.modal-view .search-panel,
+  .view.modal-view .task-list,
+  .view.modal-view .filter-row,
+  #integrations.modal-view .page-head,
+  #integrations.modal-view .integration-status,
+  #integrations.modal-view .google-account-panel {
+    width: 100%;
+  }
+}

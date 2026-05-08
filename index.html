@@ -75,13 +75,21 @@
           <div id="chatList" class="chat-list"></div>
         </section>
 
-        <div class="sidebar-note">
-          <p>An EA-replacement system, piloted first for husband-and-wife coordination. Every task owns a chat, and every chat has a focused agent.</p>
-          <button class="mini-button sidebar-signout" id="signOutButton" type="button">Sign out</button>
+        <div class="account-menu">
+          <button class="account-menu-button" id="accountMenuButton" type="button" aria-haspopup="true" aria-expanded="false">
+            <span class="account-avatar" id="accountAvatar">RD</span>
+            <span class="account-copy"><strong id="accountName">Rich</strong><small id="accountPlan">Settings</small></span>
+          </button>
+          <div class="account-menu-panel" id="accountMenuPanel" hidden>
+            <button type="button" data-view="settings">Settings</button>
+            <button type="button" data-jump="integrations">Calendar Sync</button>
+            <button type="button" id="signOutButton">Log out</button>
+          </div>
         </div>
       </aside>
 
       <main class="content">
+        <button class="modal-close" id="viewOverlayClose" type="button" aria-label="Close panel">&times;</button>
         <section class="view" id="dashboard">
           <section class="panel quick-onboarding" id="quickOnboarding" aria-label="First run setup">
             <div>
@@ -216,9 +224,9 @@
 
             <article class="panel settings-card">
               <div>
-                <p class="eyebrow">Plugin</p>
-                <h3>Google</h3>
-                <p>Review calendar handoffs, compare proximity, draft events, and create Google Calendar task chats.</p>
+                <p class="eyebrow">Integrations</p>
+                <h3>Calendar Sync</h3>
+                <p>Connect your calendar. Microsoft 365 support can live here later.</p>
               </div>
               <button class="secondary-button" data-jump="integrations" type="button">Open</button>
             </article>
@@ -387,8 +395,8 @@
         <section class="view" id="integrations">
           <div class="page-head">
             <div>
-              <p class="eyebrow">Google Suite</p>
-              <h2>Calendar review, proximity, and event creation</h2>
+              <p class="eyebrow">Integrations</p>
+              <h2>Calendar Sync</h2>
             </div>
           </div>
 
@@ -398,131 +406,16 @@
               <h3 id="googleStatusTitle">Google Calendar not connected</h3>
               <p class="small-note" id="googleConfigStatus">Google OAuth credentials load from Vercel environment variables.</p>
             </div>
-            <button class="secondary-button" id="settingsSignOutButton" type="button">Sign out</button>
           </section>
 
           <section class="panel google-account-panel">
             <div class="panel-head">
               <div>
-                <p class="eyebrow">Calendar accounts</p>
+                <p class="eyebrow">Calendar Sync</p>
                 <h3>My Calendar</h3>
               </div>
             </div>
             <div id="googleAccountList" class="google-account-list"></div>
-          </section>
-          <form id="calendarReviewForm" class="panel calendar-form">
-            <label>
-              Need
-              <select id="calendarNeed">
-                <option value="kids">Pick up kids</option>
-                <option value="groceries">Pick up groceries</option>
-                <option value="errand">Run an errand</option>
-                <option value="meeting">Attend or create meeting</option>
-              </select>
-            </label>
-            <label>
-              Destination
-              <input id="calendarDestination" required placeholder="Example: school, grocery store, venue, office" />
-            </label>
-            <label>
-              Date
-              <input id="calendarDate" type="date" />
-            </label>
-            <label>
-              Time
-              <input id="calendarTime" type="time" />
-            </label>
-            <label>
-              <span data-person-copy="partnerA-calendar">Rich calendar</span>
-              <select id="calendarAStatus">
-                <option value="free">Free</option>
-                <option value="soft">Soft conflict</option>
-                <option value="busy">Busy</option>
-              </select>
-            </label>
-            <label>
-              <span data-person-copy="partnerA-proximity">Rich proximity</span>
-              <input id="calendarAMinutes" type="number" min="0" value="10" />
-            </label>
-            <label>
-              <span data-person-copy="partnerB-calendar">Jess calendar</span>
-              <select id="calendarBStatus">
-                <option value="free">Free</option>
-                <option value="soft">Soft conflict</option>
-                <option value="busy">Busy</option>
-              </select>
-            </label>
-            <label>
-              <span data-person-copy="partnerB-proximity">Jess proximity</span>
-              <input id="calendarBMinutes" type="number" min="0" value="20" />
-            </label>
-            <label class="wide">
-              Context
-              <textarea id="calendarContext" rows="3" placeholder="Example: pickup window is 4:30-5:00, groceries are needed before dinner, meeting requires both of us"></textarea>
-            </label>
-            <button class="primary-button" type="submit">Recommend owner</button>
-          </form>
-
-          <section class="calendar-grid">
-            <article class="panel">
-              <div class="panel-head">
-                <div>
-                  <p class="eyebrow">Recommendation</p>
-                  <h3>Who should do it?</h3>
-                </div>
-              </div>
-              <div id="calendarRecommendation" class="recommendation-card"></div>
-            </article>
-
-            <article class="panel">
-              <div class="panel-head">
-                <div>
-                  <p class="eyebrow">Create event</p>
-                  <h3>Calendar event draft</h3>
-                </div>
-              </div>
-              <form id="calendarEventForm" class="event-form">
-                <label>
-                  Event title
-                  <input id="eventTitle" required placeholder="Example: School pickup" />
-                </label>
-                <label>
-                  Calendar
-                  <select id="eventCalendar">
-                    <option value="both">Shared family calendar</option>
-                    <option value="partnerA">Rich calendar</option>
-                    <option value="partnerB">Jess calendar</option>
-                  </select>
-                </label>
-                <label>
-                  Start
-                  <input id="eventStart" type="datetime-local" />
-                </label>
-                <label>
-                  End
-                  <input id="eventEnd" type="datetime-local" />
-                </label>
-                <label>
-                  Location
-                  <input id="eventLocation" placeholder="Address or place" />
-                </label>
-                <label class="wide">
-                  Notes
-                  <textarea id="eventNotes" rows="3" placeholder="Agenda, pickup details, shopping list, or prep notes"></textarea>
-                </label>
-                <button class="primary-button" type="submit">Draft event</button>
-              </form>
-            </article>
-          </section>
-
-          <section class="panel event-log-panel">
-            <div class="panel-head">
-              <div>
-                <p class="eyebrow">Calendar drafts</p>
-                <h3>Events ready to sync</h3>
-              </div>
-            </div>
-            <div id="calendarEventList" class="event-list"></div>
           </section>
         </section>
 

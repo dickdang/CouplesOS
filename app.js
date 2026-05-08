@@ -135,13 +135,15 @@ function renderAuthGate() {
   if (loginScreen) loginScreen.hidden = signedIn;
   const clientInput = $("#loginGoogleClientId");
   if (clientInput && document.activeElement !== clientInput) clientInput.value = state.google?.oauth?.clientId || "";
+  const displayName = state.auth?.googleUser?.name || profileName(state.activeUser) || "CoupleOS";
+  const accountName = $("#accountName");
+  const accountPlan = $("#accountPlan");
+  const accountAvatar = $("#accountAvatar");
+  if (accountName) accountName.textContent = displayName;
+  if (accountPlan) accountPlan.textContent = state.auth?.googleUser?.email || "Settings";
+  if (accountAvatar) accountAvatar.textContent = initials(displayName);
   const signOut = $("#signOutButton");
-  if (signOut) {
-    const label = state.auth?.googleUser?.email ? `Sign out ${state.auth.googleUser.email}` : "Sign out";
-    signOut.textContent = label;
-  }
-  const settingsSignOut = $("#settingsSignOutButton");
-  if (settingsSignOut) settingsSignOut.textContent = state.auth?.googleUser?.email ? `Sign out ${state.auth.googleUser.email}` : "Sign out";
+  if (signOut) signOut.textContent = "Log out";
 }
 
 function requestGoogleToken(scope, options = {}) {
@@ -716,6 +718,7 @@ function id() {
 
 function init() {
   bindAuth();
+  bindAccountMenu();
   bindNavigation();
   bindMobileShell();
   bindChat();
@@ -746,8 +749,7 @@ function bindAuth() {
   if (localButton) localButton.addEventListener("click", signInLocalPrototype);
   const signOutButton = $("#signOutButton");
   if (signOutButton) signOutButton.addEventListener("click", signOut);
-  const settingsSignOutButton = $("#settingsSignOutButton");
-  if (settingsSignOutButton) settingsSignOutButton.addEventListener("click", signOut);
+
 }
 
 function ensureExecutiveAssistantChat() {
@@ -1046,8 +1048,33 @@ function bindMobileShell() {
     if (event.target.closest("#mobileBackdrop")) closeMobileMenu();
   });
 }
+function bindAccountMenu() {
+  const button = $("#accountMenuButton");
+  const panel = $("#accountMenuPanel");
+  if (!button || !panel) return;
+
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const shouldOpen = panel.hidden;
+    panel.hidden = !shouldOpen;
+    button.setAttribute("aria-expanded", String(shouldOpen));
+  });
+
+  panel.addEventListener("click", (event) => {
+    if (!event.target.closest("button")) return;
+    panel.hidden = true;
+    button.setAttribute("aria-expanded", "false");
+  });
+
+  document.addEventListener("click", (event) => {
+    if (event.target.closest("#accountMenuButton") || event.target.closest("#accountMenuPanel")) return;
+    panel.hidden = true;
+    button.setAttribute("aria-expanded", "false");
+  });
+}
 function bindNavigation() {
   $("#quickNewChat").addEventListener("click", createQuickChat);
+  $("#viewOverlayClose")?.addEventListener("click", () => showView("chat"));
   $all("[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
       showView(button.dataset.view);
@@ -1074,7 +1101,13 @@ function closeMobileMenu() {
 
 function showView(view) {
   if (!$(`#${view}`)) view = "chat";
-  $all(".view").forEach((section) => section.classList.toggle("active", section.id === view));
+  const isOverlay = view !== "chat";
+  $all(".view").forEach((section) => {
+    const active = section.id === view || (isOverlay && section.id === "chat");
+    section.classList.toggle("active", active);
+    section.classList.toggle("modal-view", isOverlay && section.id === view);
+  });
+  document.body.classList.toggle("overlay-open", isOverlay);
   const settingsViews = ["settings", "integrations", "mobile"];
   const activeNav = settingsViews.includes(view) ? "settings" : view;
   $all(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === activeNav));
@@ -1086,7 +1119,7 @@ function showView(view) {
 }
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") closeMobileMenu();
+  if (event.key === "Escape") { closeMobileMenu(); if (document.body.classList.contains("overlay-open")) showView("chat"); }
 });
 
 function needsFirstRunOnboarding() {
@@ -1099,7 +1132,7 @@ function needsFirstRunOnboarding() {
 
 function routeFromHash() {
   const view = location.hash.replace("#", "");
-  if (view && view !== "dashboard" && $(`#${view}`)) showView(view);
+  if (view && $(`#${view}`)) showView(view);
   else showView(needsFirstRunOnboarding() ? "dashboard" : "chat");
 }
 
@@ -1973,61 +2006,65 @@ function bindIntegrations() {
       toast(state.google.connected ? "Google Calendar marked connected." : "Google Calendar marked disconnected.");
     });
   }
-
-  $("#calendarReviewForm").addEventListener("submit", (event) => {
-    event.preventDefault();
-    const recommendation = buildCalendarRecommendation();
-    state.google.recommendations.unshift(recommendation);
-    addLearning(recommendation.owner, `${recommendation.ownerName} is the recommended owner for ${recommendation.needLabel} at ${recommendation.destination} because ${recommendation.reason}.`, "Calendar review");
-    saveState();
-    renderIntegrations();
-    toast("Calendar recommendation created.");
-  });
-
-  $("#calendarEventForm").addEventListener("submit", (event) => {
-    event.preventDefault();
-    const calendarEvent = {
-      id: id(),
-      title: $("#eventTitle").value.trim(),
-      calendar: $("#eventCalendar").value,
-      start: $("#eventStart").value,
-      end: $("#eventEnd").value,
-      location: $("#eventLocation").value.trim(),
-      notes: $("#eventNotes").value.trim(),
-      status: "draft",
-      createdAt: new Date().toISOString()
-    };
-    state.google.events.unshift(calendarEvent);
-    const task = normalizeTask({
-      id: id(),
-      title: `Calendar: ${calendarEvent.title}`,
-      chatTitle: calendarEvent.title,
-      agentName: "Calendar Task Agent",
-      owner: calendarEvent.calendar,
-      due: calendarEvent.start ? calendarEvent.start.slice(0, 10) : todayISO(),
-      category: "Admin",
-      accountabilityPath: "all",
-      accountabilityGraceDays: 0,
-      success: `Event is synced to ${calendarLabel(calendarEvent.calendar)} with location and notes confirmed.`,
-      why: calendarEvent.notes || "Calendar coordination prevents missed handoffs.",
-      project: "Google Calendar",
-      status: "open",
-      createdAt: new Date().toISOString(),
-      updates: [],
-      messages: [
-        { role: "assistant", text: `I drafted a Google Calendar event for "${calendarEvent.title}". Production mode would create this through the Google Calendar API after approval.` },
-        { role: "assistant", text: calendarEventSummary(calendarEvent) }
-      ]
+  const calendarReviewForm = $("#calendarReviewForm");
+  if (calendarReviewForm) {
+    calendarReviewForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const recommendation = buildCalendarRecommendation();
+      state.google.recommendations.unshift(recommendation);
+      addLearning(recommendation.owner, `${recommendation.ownerName} is the recommended owner for ${recommendation.needLabel} at ${recommendation.destination} because ${recommendation.reason}.`, "Calendar review");
+      saveState();
+      renderIntegrations();
+      toast("Calendar recommendation created.");
     });
-    state.tasks.unshift(task);
-    state.activeChatId = task.id;
-    event.target.reset();
-    setDefaultDates();
-    saveState();
-    renderAll();
-    showView("chat");
-    toast("Calendar event drafted and task chat created.");
-  });
+  }
+  const calendarEventForm = $("#calendarEventForm");
+  if (calendarEventForm) {
+    calendarEventForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const calendarEvent = {
+        id: id(),
+        title: $("#eventTitle").value.trim(),
+        calendar: $("#eventCalendar").value,
+        start: $("#eventStart").value,
+        end: $("#eventEnd").value,
+        location: $("#eventLocation").value.trim(),
+        notes: $("#eventNotes").value.trim(),
+        status: "draft",
+        createdAt: new Date().toISOString()
+      };
+      state.google.events.unshift(calendarEvent);
+      const task = normalizeTask({
+        id: id(),
+        title: `Calendar: ${calendarEvent.title}`,
+        chatTitle: calendarEvent.title,
+        agentName: "Calendar Task Agent",
+        owner: calendarEvent.calendar,
+        due: calendarEvent.start ? calendarEvent.start.slice(0, 10) : todayISO(),
+        category: "Admin",
+        accountabilityPath: "all",
+        accountabilityGraceDays: 0,
+        success: `Event is synced to ${calendarLabel(calendarEvent.calendar)} with location and notes confirmed.`,
+        why: calendarEvent.notes || "Calendar coordination prevents missed handoffs.",
+        project: "Google Calendar",
+        status: "open",
+        createdAt: new Date().toISOString(),
+        updates: [],
+        messages: [
+          { role: "assistant", text: `I drafted a Google Calendar event for "${calendarEvent.title}". Production mode would create this through the Google Calendar API after approval.` },
+          { role: "assistant", text: calendarEventSummary(calendarEvent) }
+        ]
+      });
+      state.tasks.unshift(task);
+      state.activeChatId = task.id;
+      event.target.reset();
+      setDefaultDates();
+      saveState();
+      renderAll();
+      showView("chat");
+      toast("Calendar event drafted and task chat created.");
+    });
+  }
 
   const googleAccountList = $("#googleAccountList");
   if (googleAccountList) {
